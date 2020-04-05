@@ -3,7 +3,7 @@ name(edcg).
 title('Extended DCG').
 version('0.9.0.1').
 keywords([edcg, dcg, accumulator, term_expansion]).
-download('https://github.com/kamahen/edcg/releases/*.tgz').
+download('https://github.com/kamahen/edcg/releases/*.zip').
 
 author('Peter Van Roy','peter.vanroy@uclouvain.be').
 packager('Michael Hendricks','michael@ndrix.org').
