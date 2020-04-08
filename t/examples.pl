@@ -1,4 +1,4 @@
-:- use_module(library(edcg)).
+:- use_module('../prolog/edcg.pl').  % :- use_module(library(edcg)).
 
 % Declare accumulators
 edcg:acc_info(castor,_,_,_,true).
@@ -61,25 +61,31 @@ sum -->>
     [].
 
 
-:- use_module(library(tap)).
+:- use_module(library(plunit)).
 
-'flist solutions' :-
+:- begin_tests(edcg_examples).
+
+test('flist solutions') :-
     flist(7,[],L),
     L == [1,2,3,4,5,6,7].
 
 
-'rlist solutions' :-
+test('rlist solutions') :-
     rlist(7,L,[]),
     L == [7,6,5,4,3,2,1].
 
-'sum_first_n: trivial' :-
+test('sum_first_n: trivial') :-
     sum_first_n(0,0,Sum),
     Sum == 0.
 
-'sum_first_n: four' :-
+test('sum_first_n: four') :-
     sum_first_n(4,0,Sum),
     Sum is 4+3+2+1.
 
-'sum [2,2,3]' :-
+test('sum [2,2,3]') :-
     sum([2,2,3],Sum),
     Sum is 2+2+3.
+
+:- end_tests(edcg_examples).
+
+end_of_file.

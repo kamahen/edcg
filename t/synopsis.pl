@@ -1,4 +1,4 @@
-:- use_module(library(edcg)).
+:- use_module('../prolog/edcg.pl').  % :- use_module(library(edcg)).
 
 % Declare accumulators
 edcg:acc_info(adder, X, In, Out, plus(X,In,Out)).
@@ -23,8 +23,19 @@ len -->>
     [].
 
 
-:- use_module(library(tap)).
+:- use_module(library(plunit)).
 
-len([],0).
-len([a],1).
-len([a,b,a],3).
+:- begin_tests(edcg_synopsis).
+
+test(t1) :-
+    len([],0).
+
+test(t2) :-
+    len([a],1).
+
+test(t3) :-
+    len([a,b,a],3).
+
+:- end_tests(edcg_synopsis).
+
+end_of_file.

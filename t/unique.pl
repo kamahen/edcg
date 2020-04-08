@@ -1,4 +1,4 @@
-:- use_module(library(edcg)).
+:- use_module('../prolog/edcg.pl').  % :- use_module(library(edcg)).
 :- use_module(library(rbtrees), [rb_insert/4]).
 
 % Declare accumulators
@@ -23,8 +23,19 @@ unique -->>
     [].
 
 
-:- use_module(library(tap)).
+:- use_module(library(plunit)).
 
-unique([],[]).
-unique([a],[a]).
-unique([a,b,a],[a,b]).
+:- begin_tests(edcg_unique).
+
+test(t1) :-
+    unique([],[]).
+
+test(t2) :-
+    unique([a],[a]).
+
+test(t3) :-
+    unique([a,b,a],[a,b]).
+
+:- end_tests(edcg_unique).
+
+end_of_file.

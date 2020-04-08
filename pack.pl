@@ -1,7 +1,7 @@
 name(edcg).
 
 title('Extended DCG').
-version('0.9.1').
+version('0.9.1.1').
 keywords([edcg, dcg, accumulator, term_expansion]).
 download('https://github.com/kamahen/edcg/archive/*.zip').
 
