@@ -108,7 +108,8 @@ Using SWI-Prolog 7.1 or later:
 This module uses [semantic versioning](http://semver.org/).
 
 Source code available and pull requests accepted at
-http://github.com/mndrix/edcg
+http://github.com/kamahen/edcg (which takes over from
+http://github.com/mndrix/edcg).
 
 @license mit
 
