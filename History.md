@@ -1,3 +1,7 @@
+# v0.9.1.2 (2020-04-09)
+
+  * Added examples and a bit more documentation
+
 # v0.9.1.1 (2020-04-08)
 
   * Use library(plunit) for testing instead of library(tap) (Issue #3).
