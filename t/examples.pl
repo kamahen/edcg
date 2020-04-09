@@ -1,4 +1,6 @@
-:- use_module('../prolog/edcg.pl').  % :- use_module(library(edcg)).
+:- use_module('../prolog/edcg.pl'). % :- use_module(library(edcg)).
+% Complete example exits in https://www2.eecs.berkeley.edu/Pubs/TechRpts/1990/CSD-90-583.pdf
+%     (a copy is also in ../docs/CSD-90-583.pdf)
 
 % Declare accumulators
 edcg:acc_info(castor,_,_,_,true).
@@ -10,9 +12,9 @@ edcg:acc_info(adder, I, In, Out, plus(I,In,Out)).  % adder
 edcg:pass_info(pollux).
 
 % Declare predicates using these hidden arguments
-edcg:pred_info(p,1,[castor,pollux]).
-edcg:pred_info(q,1,[castor,pollux]).
-edcg:pred_info(r,1,[castor,pollux]).
+edcg:pred_info(p,1,[castor,pollux]).  % 1 - X
+edcg:pred_info(q,1,[castor,pollux]).  % 1 - Y
+edcg:pred_info(r,1,[castor,pollux]).  % 1 - Y
 edcg:pred_info(flist,1,[fwd]).
 edcg:pred_info(rlist,1,[rev]).
 edcg:pred_info(sum_first_n,1,[adder]).
@@ -60,6 +62,31 @@ sum -->>
 sum -->>
     [].
 
+% Program that uses castor and pollux accumulators
+
+p(X) -->>
+    Y is X + 1,
+    q(Y),
+    r(Y).
+
+q(Y,_,_,P) :-
+    format('q - Y: ~w, P: ~w~n',[Y,P]).
+r(Y,_,_,P) :-
+    format('r - Y: ~w, P: ~w~n',[Y,P]).
+
+% ?- listing(p).
+% p(X, A, B, C) :-
+%     Y is X+1,
+%     q(Y, A, D, C),
+%     r(Y, D, B, C).
+
+% Variables names changed for clarity
+%
+% p(X, Castor_1, Castor_3, Pollux) :-
+%     Y is X+1,
+%     q(Y, Castor_1, Castor_2, Pollux),
+%     r(Y, Castor_2, Castor_3, Pollux).
+
 
 :- use_module(library(plunit)).
 
@@ -85,6 +112,10 @@ test('sum_first_n: four') :-
 test('sum [2,2,3]') :-
     sum([2,2,3],Sum),
     Sum is 2+2+3.
+
+test(p) :-
+    with_output_to(string(Output), p(1,a,a,c)),
+    assertion( Output == "q - Y: 2, P: c\nr - Y: 2, P: c\n" ).
 
 :- end_tests(edcg_examples).
 
