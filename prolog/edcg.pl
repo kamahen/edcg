@@ -3,12 +3,14 @@
     edcg_import_sentinel/0
 ]).
 
+:- use_module(library(debug), [debug/3]).
 :- use_module(library(lists), [member/2]).
 
 % these predicates define extra arguments
 :- multifile
     acc_info/5,
     acc_info/7,
+    pred_info/3,
     pass_info/1,
     pass_info/2.
 
