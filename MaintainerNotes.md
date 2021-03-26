@@ -19,6 +19,7 @@ Jan Wielemaker jan@swi-prolog.org to update the URL pattern to
     * `pack.pl`
   * `git commit -m'...' -a`
   * `git tag v0.9.x`
+  * `git push`
   * `git push --tags`
   * Verify the new release is in `https://github.com/kamahen/edcg/releases`
   * `swipl`

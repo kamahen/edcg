@@ -1,3 +1,7 @@
+# v0.9.1.4 (2021-03-25)
+
+  * Preliminary implementation of `==>>` that generates `=>` instead of `:-`
+
 # v0.9.1.3 (2020-04-15)
 
   * Added missing `use_module`, `multifile` directives

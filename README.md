@@ -125,8 +125,9 @@ http://github.com/mndrix/edcg).
 
 Peter Van Roy's page: [Declarative Programming with State](https://www.info.ucl.ac.be/~pvr/edcg.html)
 
-Technical Report UCB/CSD-90-583 [Extended DCG Notation: A Tool for Applicative Programming in Prolog](https://www2.eecs.berkeley.edu/Pubs/TechRpts/1990/5471.html) by Peter Van Roy
+Technical Report UCB/CSD-90-583 [Extended DCG Notation: A Tool for Applicative Programming in Prolog](https://www2.eecs.berkeley.edu/Pubs/TechRpts/1990/5471.html) by Peter Van Roy:
 
-  * The Tech Report's PDF is [here](https://www2.eecs.berkeley.edu/Pubs/TechRpts/1990/CSD-90-583.pdf)
+  * PDF is [here](https://www2.eecs.berkeley.edu/Pubs/TechRpts/1990/CSD-90-583.pdf)
+  * and mirrored [here](https://github.com/kamahen/edcg/blob/master/docs/CSD-90-583.pdf).
 
 A short [Wikipedia article](https://en.wikipedia.org/wiki/Definite_clause_grammar#Extensions) on DCGs and extensions.
