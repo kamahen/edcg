@@ -1,5 +1,6 @@
 :- module( edcg, [
     op(1200, xfx, '-->>'),   % Similar to '-->'
+    op(1200, xfx, '==>>'),   % Similar to '-->'
     edcg_import_sentinel/0
 ]).
 
@@ -27,14 +28,23 @@ edcg_import_sentinel.
 
 % Perform EDCG macro expansion
 user:term_expansion((H-->>B), (TH:-TB)) :-
+    term_expansion_(H, B, TH, TB, NewAcc),
+    '_finish_acc'(NewAcc),
+    !.
+user:term_expansion((H==>>B), (TH=>TB2)) :-
+    % TODO: add a syntax for guards in the head
+    term_expansion_(H, B, TH, TB, NewAcc),
+    '_finish_acc_ssu'(NewAcc, TB, TB2),
+    !.
+
+term_expansion_(H, B, TH, TB, NewAcc) :-
     wants_edcg_expansion,
     functor(H, Na, Ar),
     '_has_hidden'(H, HList),
     debug(edcg,'Expanding ~w',[H]),
     '_new_goal'(H, HList, HArity, TH),
     '_create_acc_pass'(HList, HArity, TH, Acc, Pass),
-    '_expand_goal'(B, TB, Na/Ar, HList, Acc, NewAcc, Pass),
-    '_finish_acc'(NewAcc), !.
+    '_expand_goal'(B, TB, Na/Ar, HList, Acc, NewAcc, Pass).
 
 % Expand a goal:
 '_expand_goal'((G1,G2), (TG1,TG2), NaAr, HList, Acc, NewAcc, Pass) :-
@@ -175,6 +185,10 @@ user:term_expansion((H-->>B), (TH:-TB)) :-
 % Link its Left and Right accumulation variables together in pairs:
 '_finish_acc'([]).
 '_finish_acc'([acc(_,Link,Link)|Acc]) :- '_finish_acc'(Acc).
+
+'_finish_acc_ssu'([], TB, TB).
+'_finish_acc_ssu'([acc(_,Link0,Link1)|Acc], TB0, TB) :-
+    '_finish_acc_ssu'(Acc, (Link0=Link1,TB0), TB).
 
 % Replace elements in the Acc data structure:
 % Succeeds iff replacement is successful.

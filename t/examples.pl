@@ -19,10 +19,14 @@ edcg:pred_info(p,1,[castor,pollux]).
 edcg:pred_info(q,1,[castor,pollux]).
 edcg:pred_info(r,1,[castor,pollux]).
 edcg:pred_info(flist,1,[fwd]).
+edcg:pred_info(flist_ssu,1,[fwd]).
 edcg:pred_info(rlist,1,[rev]).
+edcg:pred_info(rlist_ssu,1,[rev]).
 edcg:pred_info(sum_first_n,1,[adder]).
+edcg:pred_info(sum_first_n_ssu,1,[adder]).
 edcg:pred_info(sum,0,[adder,dcg]).
 edcg:pred_info(expr_code,1,[size,code]).
+edcg:pred_info(expr_code_ssu,1,[size,code]).
 
 
 % flist(N,[],List) creates the list [1,2,...,N]
@@ -35,6 +39,14 @@ flist(N) -->>
     N1 is N-1,
     flist(N1).
 
+flist_ssu(0) ==>>
+    [].
+flist_ssu(N) ==>>
+    N>0, % TODO: this should be a guard
+    [N]:fwd,
+    N1 is N-1,
+    flist_ssu(N1).
+
 
 % rlist(N,List,[]) creates the list [N,...,2,1]
 rlist(0) -->>
@@ -46,6 +58,14 @@ rlist(N) -->>
     N1 is N-1,
     rlist(N1).
 
+rlist_ssu(0) ==>>
+    [].
+rlist_ssu(N) ==>>
+    N>0, % TODO: this should be a guard
+    [N]:rev,
+    N1 is N-1,
+    rlist_ssu(N1).
+
 
 % sum(N,0,Sum) adds the numbers 1,2,...,N
 sum_first_n(0) -->>
@@ -56,6 +76,15 @@ sum_first_n(N) -->>
     [N]:adder,
     N1 is N-1,
     sum_first_n(N1).
+
+sum_first_n_ssu(0) ==>>
+    [].
+sum_first_n_ssu(N) ==>>
+    N>0, % TODO: this should be a guard
+    [N]:adder,
+    N1 is N-1,
+    sum_first_n_ssu(N1).
+
 
 sum(Xs,Sum) :-
     sum(0,Sum,Xs,[]).
@@ -100,6 +129,16 @@ expr_code(I) -->>
     [push(I)]:code,
     [1]:size.
 
+expr_code_ssu(A+B) ==>>
+    expr_code_ssu(A),
+    expr_code_ssu(B),
+    [plus]:code,
+    [1]:size.
+expr_code_ssu(I) ==>>
+    {atomic(I)}, % TODO: this should be a guard
+    [push(I)]:code,
+    [1]:size.
+
 
 :- use_module(library(plunit)).
 
@@ -109,17 +148,33 @@ test('flist solutions') :-
     flist(7,[],L),
     L == [1,2,3,4,5,6,7].
 
+test('flist_ssu solutions') :-
+    flist_ssu(7,[],L),
+    L == [1,2,3,4,5,6,7].
+
 
 test('rlist solutions') :-
     rlist(7,L,[]),
+    L == [7,6,5,4,3,2,1].
+
+test('rlist_ssu solutions') :-
+    rlist_ssu(7,L,[]),
     L == [7,6,5,4,3,2,1].
 
 test('sum_first_n: trivial') :-
     sum_first_n(0,0,Sum),
     Sum == 0.
 
+test('sum_first_n_ssu: trivial') :-
+    sum_first_n_ssu(0,0,Sum),
+    Sum == 0.
+
 test('sum_first_n: four') :-
     sum_first_n(4,0,Sum),
+    Sum is 4+3+2+1.
+
+test('sum_first_n_ssu: four') :-
+    sum_first_n_ssu(4,0,Sum),
     Sum is 4+3+2+1.
 
 test('sum [2,2,3]') :-
@@ -147,6 +202,11 @@ test(gemini_1) :-
 
 test(expr1, [nondet]) :-
     expr_code((a+b)+(c+d), 0, Size, Code, []),
+    assertion(Size == 7),
+    assertion(Code == [push(a), push(b), plus, push(c), push(d), plus, plus]).
+
+test(expr1_ssu, [nondet]) :-
+    expr_code_ssu((a+b)+(c+d), 0, Size, Code, []),
     assertion(Size == 7),
     assertion(Code == [push(a), push(b), plus, push(c), push(d), plus, plus]).
 

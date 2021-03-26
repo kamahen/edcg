@@ -26,6 +26,14 @@ len -->>
     [].
 ```
 
+## Single-sided unification enhancement
+
+If you're using [SWI-Prolog](http://www.swi-prolog.org) 8.3.21 or
+later, you can use `==>>`, which generates clauses with `=>` instead
+of `:-`.
+
+TODO: devise a syntax for allowing a "guard" 
+
 # Introduction
 
 DCG notation gives us a single, hidden accumulator.  Extended DCG notation (implemented by this library) lets predicates have arbitrarily many hidden accumulators. As demonstrated by the Synopsis above, those accumulators can be implemented with arbitrary goals (like plus/3).
