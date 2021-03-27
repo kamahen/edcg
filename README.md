@@ -30,9 +30,11 @@ len -->>
 
 If you're using [SWI-Prolog](http://www.swi-prolog.org) 8.3.21 or
 later, you can use `==>>`, which generates clauses with `=>` instead
-of `:-`.
+of `:-`. More details are given later in this document.
 
-TODO: devise a syntax for allowing a "guard" 
+This enhancement is experimental and subject to change.
+
+
 
 # Introduction
 
@@ -106,6 +108,67 @@ pass_info(Pass, PStart)
 ```
 
 In most cases the short form is sufficient. It declares a passed argument `Pass`, that must be an atom. The long form also contains the starting value `PStart` that is used to give a default value for a passed argument in a body goal that does not occur in the head. Most of the time this situation does not occur.
+
+## Single-sided unification enhancement - guards
+
+With `==>>`, you can also specifiy "guards" in the head.
+To avoid confusion with "push back lists" for `-->`, each guard
+must be prefixed by the operator `?`.
+Here's a trivial example:
+```prolog
+p(A, X) -->> A=a, !, X=1.
+```
+can be written with guards as:
+```prolog
+p(A), ? A=a ==>> {X=1}.
+```
+
+Because guards currently are not expanded, there is no need to use the
+`{...}` notation for guards; but you can use it if you want.  Note
+that SWI-Prolog's use of curly braces for dicts means that you need to
+put a space between `?` and `{`.
+
+## Differences between `-->>` and `-->`
+
+The standard definition of DCGs allows a "push-back list" or
+"right-hand context" in the head of a DCG rule. These seem to be of
+limited use, and primarily used for doing a "look-ahead". For some
+discussion on this, see [this comment by Richard
+O'Keefe](https://swi-prolog.iai.uni-bonn.narkive.com/cOnL0aGn/push-back-lists-on-dcg-rule-heads)
+and the [DCG Primer](https://www.metalevel.at/prolog/dcg).
+
+## Cuts
+
+[This comment by Richard
+O'Keefe](https://swi-prolog.iai.uni-bonn.narkive.com/cOnL0aGn/push-back-lists-on-dcg-rule-heads)
+discusses cuts in DCGs and why the original implementation used a
+`C/3` predicate for unifications. In essence, if you move a unification over a cut,
+
+EDCGs short-cut this, so if you use cuts, you might not get a correct
+translation. Here's an example:
+```prolog
+p(a), [X] --> !, [X,a], q(X).
+```
+
+This should be translated as
+```prolog
+p(a, S0, S) :- !,
+    /* note that the cut is done *exactly* where it appears */
+    S0 = [X,a|S1],
+    q(X, S1, S2),
+    S = [X|S2].
+```
+
+The current SWI-Prolog implementation translates it to the following,
+which has an extra `=/2` in it:
+```prolog
+p(a, S0, S) :-
+    !,
+    C=S0,
+    C=[X, a|S1],
+    q(X, S1, S2),
+    S=[X|S2].
+```
 
 # Installation
 

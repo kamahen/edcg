@@ -1,3 +1,7 @@
+# v0.9.1.5 (2021-03-27)
+
+  * Preliminary implementation of guards with `==>>`.
+
 # v0.9.1.4 (2021-03-25)
 
   * Preliminary implementation of `==>>` that generates `=>` instead of `:-`

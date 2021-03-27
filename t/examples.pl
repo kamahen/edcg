@@ -210,6 +210,27 @@ test(expr1_ssu, [nondet]) :-
     assertion(Size == 7),
     assertion(Code == [push(a), push(b), plus, push(c), push(d), plus, plus]).
 
+edcg:pred_info(p, 2, [dcg]). % For test ssu1
+
+test(ssu1,
+     [Expansion =@=
+     (   p(b, X, S0, S) =>
+             S0=S,
+             X=2
+     )]) :-
+    expand_term((p(b, X) ==>> {X=2}), Expansion).
+
+edcg:pred_info(p2, 2, [dcg]). % FOr test ssu_guard
+
+test(ssu2_guard,
+     [Expansion =@=
+     (   p2(A, X, S0, S), A=a =>
+             S0=S,
+             X=1
+     )]) :-
+    expand_term((p2(A, X), ? A=a ==>> {X=1}), Expansion).
+
+
 :- end_tests(edcg_examples).
 
 end_of_file.

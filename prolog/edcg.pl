@@ -1,13 +1,15 @@
 :- module( edcg, [
     op(1200, xfx, '-->>'),   % Similar to '-->'
     op(1200, xfx, '==>>'),   % Similar to '-->'
+    op( 950,  fx, '?'),      % For guards with '==>>'
     edcg_import_sentinel/0
 ]).
 
 :- use_module(library(debug), [debug/3]).
 :- use_module(library(lists), [member/2]).
 
-% these predicates define extra arguments
+% These predicates define extra arguments and are defined in the
+% modules that use the edcg module.
 :- multifile
     acc_info/5,
     acc_info/7,
@@ -27,15 +29,34 @@ edcg_import_sentinel.
 
 
 % Perform EDCG macro expansion
+% TODO: support ((H,PB-->>B) [same as regular DCG]
 user:term_expansion((H-->>B), (TH:-TB)) :-
     term_expansion_(H, B, TH, TB, NewAcc),
     '_finish_acc'(NewAcc),
     !.
-user:term_expansion((H==>>B), (TH=>TB2)) :-
-    % TODO: add a syntax for guards in the head
+user:term_expansion((H,PB==>>B), (TH,Guards=>TB2)) :-
+    '_guard_expansion_'(PB, Guards),
     term_expansion_(H, B, TH, TB, NewAcc),
     '_finish_acc_ssu'(NewAcc, TB, TB2),
     !.
+user:term_expansion((H==>>B), (TH=>TB2)) :-
+    term_expansion_(H, B, TH, TB, NewAcc),
+    '_finish_acc_ssu'(NewAcc, TB, TB2),
+    !.
+
+% TODO: Do we want to expand the guards?
+%       For now, just verify that they all start with '?'
+'_guard_expansion_'((?G0,G2), (G, GE2)) :- !,
+    '_guard_expansion_curly_'(G0, G),
+    '_guard_expansion_'(G2, GE2).
+'_guard_expansion_'(?G0, G) :- !,
+    '_guard_expansion_curly_'(G0, G).
+'_guard_expansion_'(G, _) :-
+    throw(error(type_error(guard,G),_)).
+
+'_guard_expansion_curly_'({G}, G) :- !.
+'_guard_expansion_curly_'(G, G).
+
 
 term_expansion_(H, B, TH, TB, NewAcc) :-
     wants_edcg_expansion,
@@ -183,6 +204,7 @@ term_expansion_(H, B, TH, TB, NewAcc) :-
 
 % Finish the Acc data structure:
 % Link its Left and Right accumulation variables together in pairs:
+% TODO: does this work correctly in the presence of cuts? ("!") - see README
 '_finish_acc'([]).
 '_finish_acc'([acc(_,Link,Link)|Acc]) :- '_finish_acc'(Acc).
 

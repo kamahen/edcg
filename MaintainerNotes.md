@@ -34,4 +34,8 @@ Jan Wielemaker jan@swi-prolog.org to update the URL pattern to
 Discussion about modules and multi-file directives in edcg.pl:
 https://swi-prolog.discourse.group/t/using-consult-in-a-directive-to-load-source-code-it-puzzles-me/2081
 
+Discussion about the ==>> extension and guards:
+https://swi-prolog.discourse.group/t/dcgs-with-single-sided-unification/3768
+
+
 Note that logtalk has its own port, which avoids the `edcg:pred_info` multifile predicates.
