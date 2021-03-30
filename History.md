@@ -1,3 +1,8 @@
+# v0.9.1.6 (2021-03-30)
+
+  * Support *->
+  * Work-around bug in listing/1 that sometimes caused strange "extended_pos" warning.
+
 # v0.9.1.5 (2021-03-27)
 
   * Preliminary implementation of guards with `==>>`.
