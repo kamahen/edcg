@@ -1,7 +1,7 @@
 :- module( edcg, [
     op(1200, xfx, '-->>'),   % Similar to '-->'
     op(1200, xfx, '==>>'),   % Similar to '-->'
-    op( 950,  fx, '?'),      % For guards with '==>>'
+    op( 990,  fx, '?'),      % For guards with '==>>'
     edcg_import_sentinel/0
 ]).
 
@@ -76,11 +76,19 @@ term_expansion_(H, B, TH, TB, NewAcc) :-
     '_expand_goal'(G2, MG2, NaAr, HList, MidAcc, Acc1, Pass),
     '_expand_goal'(G3, MG3, NaAr, HList, Acc, Acc2, Pass),
     '_merge_acc'(Acc, Acc1, MG2, TG2, Acc2, MG3, TG3, NewAcc).
+'_expand_goal'((G1*->G2;G3), (TG1*->TG2;TG3), NaAr, HList, Acc, NewAcc, Pass) :-
+    '_expand_goal'(G1, TG1, NaAr, HList, Acc, MidAcc, Pass),
+    '_expand_goal'(G2, MG2, NaAr, HList, MidAcc, Acc1, Pass),
+    '_expand_goal'(G3, MG3, NaAr, HList, Acc, Acc2, Pass),
+    '_merge_acc'(Acc, Acc1, MG2, TG2, Acc2, MG3, TG3, NewAcc).
 '_expand_goal'((G1;G2), (TG1;TG2), NaAr, HList, Acc, NewAcc, Pass) :-
     '_expand_goal'(G1, MG1, NaAr, HList, Acc, Acc1, Pass),
     '_expand_goal'(G2, MG2, NaAr, HList, Acc, Acc2, Pass),
     '_merge_acc'(Acc, Acc1, MG1, TG1, Acc2, MG2, TG2, NewAcc).
 '_expand_goal'((G1->G2), (TG1->TG2), NaAr, HList, Acc, NewAcc, Pass) :-
+    '_expand_goal'(G1, TG1, NaAr, HList, Acc, MidAcc, Pass),
+    '_expand_goal'(G2, TG2, NaAr, HList, MidAcc, NewAcc, Pass).
+'_expand_goal'((G1*->G2), (TG1->TG2), NaAr, HList, Acc, NewAcc, Pass) :-
     '_expand_goal'(G1, TG1, NaAr, HList, Acc, MidAcc, Pass),
     '_expand_goal'(G2, TG2, NaAr, HList, MidAcc, NewAcc, Pass).
 '_expand_goal'((\+G), (\+TG), NaAr, HList, Acc, Acc, Pass) :-
