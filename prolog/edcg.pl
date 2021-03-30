@@ -28,6 +28,23 @@ wants_edcg_expansion :-
 edcg_import_sentinel.
 
 
+% term_expansion/4 is used to work around SWI-Prolog's attempts to
+% match variable names when doing a listing (or interactive trace) and
+% getting confused; this sometimes results in a strange error message
+% for an unknown extended_pos(Pos,N).
+
+% Returning a variable for _Layout2 means "I don't know".
+% See https://swi-prolog.discourse.group/t/strange-warning-message-from-compile-or-listing/3774
+
+% TODO: support ((H,PB-->>B) [same as regular DCG]
+user:term_expansion((H-->>B), _Layout1, Expansion, _Layout2) :-
+    user:term_expansion((H-->>B), Expansion).
+user:term_expansion((H,PB==>>B), _Layout1, Expansion, _Layout2) :-
+    user:term_expansion((H,PB==>>B), Expansion).
+user:term_expansion((H==>>B), _Layout1, Expansion, _Layout2) :-
+    user:term_expansion((H==>>B), Expansion).
+
+
 % Perform EDCG macro expansion
 % TODO: support ((H,PB-->>B) [same as regular DCG]
 user:term_expansion((H-->>B), (TH:-TB)) :-
