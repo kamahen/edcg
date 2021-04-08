@@ -1,3 +1,7 @@
+# v0.9.1.7 (2021-04-08)
+
+  * Backward-compatible work-around for => (Issue #6).
+
 # v0.9.1.6 (2021-03-30)
 
   * Support *->

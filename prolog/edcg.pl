@@ -5,6 +5,14 @@
     edcg_import_sentinel/0
 ]).
 
+% If running a version of SWI-Prolog older than 8.3.19, define the
+% '=>' operator to prevent syntax errors in this module.  The '==>>'
+% operator is still defined in the module export, even though it'll
+% generate a runtime error if it's used.
+:- if(\+ current_op(_, _, '=>')).
+:- op(1200, xfx, '=>').
+:- endif.
+
 :- use_module(library(debug), [debug/3]).
 :- use_module(library(lists), [member/2]).
 
