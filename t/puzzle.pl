@@ -82,7 +82,7 @@ state_move_passenger(OtherSide, Passenger, State, State2) :-
 
 %! valid_state(+State) is semidet.
 % Test whether a State is valid (fox can't eat goose, goose can't eat beans)
-valid_state(state{farmer:FarmerSide, fox:FoxSide, goose:GooseSide, beans:BeansSide}) =>
+valid_state(state{farmer:FarmerSide, fox:FoxSide, goose:GooseSide, beans:BeansSide}) :-
     (FoxSide \= GooseSide; FoxSide = FarmerSide),
     (GooseSide \= BeansSide; GooseSide = FarmerSide).
 
