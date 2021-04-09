@@ -50,12 +50,15 @@ puzzle(_Side, State) -->>
     State/final_state,  % FinalState/final_state, FinalState = State
     !.
 puzzle(Side, State) -->>
-    { other_side(Side, OtherSide) },
-    { cross_in_boat(State, Passengers) },
-    new_state([farmer|Passengers], OtherSide, State, State2),
-    { valid_state(State2) },
+    % The "{...}" isn't needed because there are no edcg:pred_info/3
+    % clauses for these predicates, but it's good documentation.
+    { other_side(Side, OtherSide),
+      cross_in_boat(State, Passengers),
+      new_state([farmer|Passengers], OtherSide, State, State2),
+      valid_state(State2),
+      select(farmer, Passengers, PassengersWithoutFarmer)
+    },
     [ State2 ]:state,
-    { select(farmer, Passengers, PassengersWithoutFarmer) },
     [ PassengersWithoutFarmer:Side->OtherSide:State2 ]:move,
     puzzle(OtherSide, State2).
 
