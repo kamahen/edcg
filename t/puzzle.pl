@@ -7,9 +7,9 @@
 :- use_module(library(apply)).
 :- use_module(library(lists)).
 
-%! print_solution is semidet.
+%! print_solutions is semidet.
 % Find all the solutions and print them out.
-print_solution :-
+print_solutions :-
     setof(Moves, puzzle_moves(Moves), Solutions),
     print_term(Solutions, []).
 
@@ -54,7 +54,7 @@ puzzle(Side, State) -->>
     % clauses for these predicates, but it's good documentation.
     { other_side(Side, OtherSide),
       cross_in_boat(State, Passengers),
-      new_state([farmer|Passengers], OtherSide, State, State2),
+      new_state(Passengers, OtherSide, State, State2),
       valid_state(State2),
       select(farmer, Passengers, PassengersWithoutFarmer)
     },
