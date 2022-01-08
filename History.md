@@ -1,3 +1,7 @@
+# v0.9.1.8 (2022-01-08)
+
+  * Remove user:term_expansion/2 leaving only user:term_expansion/4
+
 # v0.9.1.7 (2021-04-08)
 
   * Backward-compatible work-around for => (Issue #6).

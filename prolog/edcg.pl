@@ -46,25 +46,25 @@ edcg_import_sentinel.
 
 % TODO: support ((H,PB-->>B) [same as regular DCG]
 user:term_expansion((H-->>B), _Layout1, Expansion, _Layout2) :-
-    user:term_expansion((H-->>B), Expansion).
+    edcg_term_expansion((H-->>B), Expansion).
 user:term_expansion((H,PB==>>B), _Layout1, Expansion, _Layout2) :-
-    user:term_expansion((H,PB==>>B), Expansion).
+    edcg_term_expansion((H,PB==>>B), Expansion).
 user:term_expansion((H==>>B), _Layout1, Expansion, _Layout2) :-
-    user:term_expansion((H==>>B), Expansion).
+    edcg_term_expansion((H==>>B), Expansion).
 
 
 % Perform EDCG macro expansion
 % TODO: support ((H,PB-->>B) [same as regular DCG]
-user:term_expansion((H-->>B), (TH:-TB)) :-
+edcg_term_expansion((H-->>B), (TH:-TB)) :-
     term_expansion_(H, B, TH, TB, NewAcc),
     '_finish_acc'(NewAcc),
     !.
-user:term_expansion((H,PB==>>B), (TH,Guards=>TB2)) :-
+edcg_term_expansion((H,PB==>>B), (TH,Guards=>TB2)) :-
     '_guard_expansion_'(PB, Guards),
     term_expansion_(H, B, TH, TB, NewAcc),
     '_finish_acc_ssu'(NewAcc, TB, TB2),
     !.
-user:term_expansion((H==>>B), (TH=>TB2)) :-
+edcg_term_expansion((H==>>B), (TH=>TB2)) :-
     term_expansion_(H, B, TH, TB, NewAcc),
     '_finish_acc_ssu'(NewAcc, TB, TB2),
     !.
