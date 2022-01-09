@@ -94,3 +94,30 @@ valid_state(state{farmer:FarmerSide, fox:FoxSide, goose:GooseSide, beans:BeansSi
 other_side(hither, yon).
 other_side(yon,    hither).
 
+
+:- use_module(library(plunit)).
+
+:- begin_tests(edcg_unique).
+
+test(solutions) :-
+    setof(Moves, puzzle_moves(Moves), Solutions),
+    assertion(Solutions ==
+             [ [ [goose]:hither->yon:state{beans:hither,farmer:yon,fox:hither,goose:yon},
+                 []:yon->hither:state{beans:hither,farmer:hither,fox:hither,goose:yon},
+                 [beans]:hither->yon:state{beans:yon,farmer:yon,fox:hither,goose:yon},
+                 [goose]:yon->hither:state{beans:yon,farmer:hither,fox:hither,goose:hither},
+                 [fox]:hither->yon:state{beans:yon,farmer:yon,fox:yon,goose:hither},
+                 []:yon->hither:state{beans:yon,farmer:hither,fox:yon,goose:hither},
+                 [goose]:hither->yon:state{beans:yon,farmer:yon,fox:yon,goose:yon}
+               ],
+               [ [goose]:hither->yon:state{beans:hither,farmer:yon,fox:hither,goose:yon},
+                 []:yon->hither:state{beans:hither,farmer:hither,fox:hither,goose:yon},
+                 [fox]:hither->yon:state{beans:hither,farmer:yon,fox:yon,goose:yon},
+                 [goose]:yon->hither:state{beans:hither,farmer:hither,fox:yon,goose:hither},
+                 [beans]:hither->yon:state{beans:yon,farmer:yon,fox:yon,goose:hither},
+                 []:yon->hither:state{beans:yon,farmer:hither,fox:yon,goose:hither},
+                 [goose]:hither->yon:state{beans:yon,farmer:yon,fox:yon,goose:yon}
+               ]
+             ]).
+
+:- end_tests(edcg_unique).
