@@ -14,7 +14,8 @@
 :- endif.
 
 :- use_module(library(debug), [debug/3]).
-:- use_module(library(lists), [member/2]).
+:- use_module(library(lists), [member/2, selectchk/3]).
+:- use_module(library(apply), [maplist/3, maplist/4, foldl/4]).
 
 % These predicates define extra arguments and are defined in the
 % modules that use the edcg module.
@@ -25,10 +26,16 @@
     pass_info/1,
     pass_info/2.
 
+:- multifile
+    prolog_clause:make_varnames_hook/5,
+    prolog_clause:unify_clause_hook/5.
 
 % True if the module being read has opted-in to EDCG macro expansion.
 wants_edcg_expansion :-
     prolog_load_context(module, Module),
+    wants_edcg_expansion(Module).
+
+wants_edcg_expansion(Module) :-
     Module \== edcg,  % don't expand macros in our own library
     predicate_property(Module:edcg_import_sentinel, imported_from(edcg)).
 
@@ -43,56 +50,85 @@ edcg_import_sentinel.
 
 % Returning a variable for _Layout2 means "I don't know".
 % See https://swi-prolog.discourse.group/t/strange-warning-message-from-compile-or-listing/3774
+user:term_expansion(Term, Layout0, Expansion, Layout) :-
+    wants_edcg_expansion,
+    edcg_expand_clause(Term, Expansion, Layout0, Layout).
+
+% TODO:
+% prolog_clause:unify_clause_hook(Read, Decompiled, Module, TermPos0, TermPos) :-
+%     wants_edcg_expansion(Module),
+%     edcg_expand_clause(Read, Decompiled, TermPos0, TermPos).
+
+% TODO:
+%   prolog_clause:make_varnames_hook(ReadClause, DecompiledClause, Offsets, Names, Term) :- ...
 
 % TODO: support ((H,PB-->>B) [same as regular DCG]
-user:term_expansion((H-->>B), _Layout1, Expansion, _Layout2) :-
-    edcg_term_expansion((H-->>B), Expansion).
-user:term_expansion((H,PB==>>B), _Layout1, Expansion, _Layout2) :-
-    edcg_term_expansion((H,PB==>>B), Expansion).
-user:term_expansion((H==>>B), _Layout1, Expansion, _Layout2) :-
-    edcg_term_expansion((H==>>B), Expansion).
+edcg_expand_clause((H-->>B), Expansion, TermPos0, _) :-
+    edcg_expand_clause_wrap((H-->>B), Expansion, TermPos0, _).
+edcg_expand_clause((H,PB==>>B), Expansion, TermPos0, _) :-
+    edcg_expand_clause_wrap((H,PB==>>B), Expansion, TermPos0, _).
+edcg_expand_clause((H==>>B), Expansion, TermPos0, _) :-
+    edcg_expand_clause_wrap((H==>>B), Expansion, TermPos0, _).
 
+edcg_expand_clause_wrap(Term, Expansion, TermPos0, TermPos) :-
+    % (   valid_termpos(Term, TermPos0)  % for debugging
+    % ->  true
+    % ;   throw(error(invalid_termpos_read(Term,TermPos0), _))
+    % ),
+    (   '_expand_clause'(Term, Expansion, TermPos0, TermPos)
+    ->  true
+    ;   throw(error('FAILED_expand_clause'(Term, Expansion, TermPos0, TermPos), _))
+    ),
+    % (   valid_termpos(Expansion, TermPos) % for debugging
+    % ->  true
+    % ;   throw(error(invalid_termpos_expansion(Expansion, TermPos), _))
+    % ).
+    true.
 
-:- det(edcg_term_expansion/2).
+% :- det('_expand_clause'/4).
 % Perform EDCG macro expansion
 % TODO: support ((H,PB-->>B) [same as regular DCG]
-edcg_term_expansion((H-->>B), Expansion) =>
+'_expand_clause'((H-->>B), Expansion, TermPos0, TermPos) =>
+    TermPos0 = term_position(From,To,ArrowFrom,ArrowTo,[H_pos,B_pos]),
+    TermPos  = term_position(From,To,ArrowFrom,ArrowTo,[Hx_pos,Bx_pos]),
     Expansion = (TH:-TB),
-    term_expansion_(H, B, TH, TB, NewAcc),
+    '_expand_head_body'(H, B, TH, TB, NewAcc, H_pos,B_pos, Hx_pos,Bx_pos),
     '_finish_acc'(NewAcc),
     !.
-edcg_term_expansion((H,PB==>>B), Expansion) =>
+'_expand_clause'((H,PB==>>B), Expansion, _TermPos0, _) => % TODO TermPos
+    % '==>>'(',',(H,PB),B)
     Expansion = (TH,Guards=>TB2),
-    '_guard_expansion_'(PB, Guards),
-    term_expansion_(H, B, TH, TB, NewAcc),
+    '_expand_guard'(PB, Guards),
+    '_expand_head_body'(H, B, TH, TB, NewAcc, _H_pos,_B_pos, _Hx_pos,_Bx_pos),
     '_finish_acc_ssu'(NewAcc, TB, TB2),
     !.
-edcg_term_expansion((H==>>B), Expansion) =>
+'_expand_clause'((H==>>B), Expansion, TermPos0, TermPos) =>
+    TermPos0 = term_position(From,To,ArrowFrom,ArrowTo,[H_pos,B_pos]),
+    TermPos  = term_position(From,To,ArrowFrom,ArrowTo,[Hx_pos,Bx_pos]),
     Expansion = (TH=>TB2),
-    term_expansion_(H, B, TH, TB, NewAcc),
+    '_expand_head_body'(H, B, TH, TB, NewAcc, H_pos,B_pos, Hx_pos,Bx_pos),
     '_finish_acc_ssu'(NewAcc, TB, TB2),
     !.
 
-:- det('_guard_expansion_'/2).
+:- det('_expand_guard'/2).
 % TODO: Do we want to expand the guards?
 %       For now, just verify that they all start with '?'
-'_guard_expansion_'((?G0,G2), Expansion) =>
+'_expand_guard'((?G0,G2), Expansion) =>
     Expansion = (G, GE2),
-    '_guard_expansion_curly_'(G0, G),
-    '_guard_expansion_'(G2, GE2).
-'_guard_expansion_'(?G0, G) =>
-    '_guard_expansion_curly_'(G0, G).
-'_guard_expansion_'(G, _) =>
+    '_expand_guard_curly'(G0, G),
+    '_expand_guard'(G2, GE2).
+'_expand_guard'(?G0, G) =>
+    '_expand_guard_curly'(G0, G).
+'_expand_guard'(G, _) =>
     throw(error(type_error(guard,G),_)).
 
-:- det('_guard_expansion_curly_'/2).
-'_guard_expansion_curly_'({G}, G) :- !.
-'_guard_expansion_curly_'(G, G).
+:- det('_expand_guard_curly'/2).
+'_expand_guard_curly'({G}, G) :- !.
+'_expand_guard_curly'(G, G).
 
 
-:- det(term_expansion_/5).
-term_expansion_(H, B, TH, TB, NewAcc) :-
-    wants_edcg_expansion,
+:- det('_expand_head_body'/9).
+'_expand_head_body'(H, B, TH, TB, NewAcc, _H_pos,_B_pos, _Hx_pos,_Bx_pos) :-
     functor(H, Na, Ar),
     '_has_hidden'(H, HList), % TODO: can backtrack - should it?
     debug(edcg,'Expanding ~w',[H]),
@@ -363,10 +399,10 @@ term_expansion_(H, B, TH, TB, NewAcc) :-
 % Give a list of G's hidden parameters:
 '_has_hidden'(G, GList) :-
     functor(G, GName, GArity),
-    pred_info(GName, GArity, GList).
-'_has_hidden'(G, []) :-
-    functor(G, GName, GArity),
-    \+pred_info(GName, GArity, _).
+    (   pred_info(GName, GArity, GList)
+    ->  true
+    ;   GList = []
+    ).
 
 % Succeeds if A is an accumulator:
 '_is_acc'(A), atomic(A) => '_acc_info'(A, _, _, _, _, _, _).
@@ -439,5 +475,65 @@ prolog:message(missing_hidden_parameter(Predicate,Term)) -->
     ['In ~w the term ''~w'' uses a non-existent hidden parameter.'-[Predicate,Term]].
 prolog:message(not_a_hidden_param(Name)) -->
     ['~w is not a hidden parameter'-[Name]].
+% === The following are for debugging term_expansion/4
+
+% :- det(valid_termpos/2). % DO NOT SUBMIT
+%! valid_termpos(+Term, ?TermPos) is semidet.
+% Checks that a Term has an appropriate TermPos.
+% This should always succeed:
+%    read_term(Term, [subterm_positions(TermPos)]),
+%    valid_termpos(Term, TermPos)
+% Note that this can create a TermPos. Each clause ends with
+% a cut, to avoid unneeded backtracking.
+valid_termpos(Term, TermPos) :-
+    (   valid_termpos_(Term, TermPos)
+    ->  true
+    ;   fail % throw(error(invalid_termpos(Term,TermPos), _)) % DO NOT SUBMIT
+    ).
+
+valid_termpos_(Var,    _From-_To) :- var(Var).
+valid_termpos_(Atom,   _From-_To) :- atom(Atom), !.
+valid_termpos_(Number, _From-_To) :- number(Number), !.
+valid_termpos_(String,  string_position(_From,_To)) :- string(String), !.
+valid_termpos_([],     _From-_To) :- !.
+valid_termpos_({Arg},   brace_term_position(_From,_To,ArgPos)) :-
+    valid_termpos(Arg, ArgPos), !.
+% TODO: combine the two list_position clauses
+valid_termpos_([Hd|Tl], list_position(_From,_To, ElemsPos, none)) :-
+    maplist(valid_termpos, [Hd|Tl], ElemsPos),
+    list_tail([Hd|Tl], _, []), !.
+valid_termpos_([Hd|Tl], list_position(_From,_To, ElemsPos, TailPos)) :-
+    list_tail([Hd|Tl], HdPart, Tail),
+    tailPos \= none, Tail \= [],
+    maplist(valid_termpos, HdPart, ElemsPos),
+    valid_termpos(Tail, TailPos), !.
+valid_termpos_(Term, term_position(_From,_To, FFrom,FTo,SubPos)) :-
+    compound_name_arguments(Term, Name, Arguments),
+    valid_termpos(Name, FFrom-FTo),
+    maplist(valid_termpos, Arguments, SubPos), !.
+valid_termpos_(Dict, dict_position(_From,_To,TagFrom,TagTo,KeyValuePosList)) :-
+    dict_pairs(Dict, Tag, Pairs),
+    valid_termpos(Tag, TagFrom-TagTo),
+    foldl(valid_termpos_dict, Pairs, KeyValuePosList, []), !.
+% key_value_position(From, To, SepFrom, SepTo, Key, KeyPos, ValuePos) is handled
+% in valid_termpos_dict.
+valid_termpos_(Term, parentheses_term_position(_From,_To,ContentPos)) :-
+    valid_termpos(Term, ContentPos), !.
+% TODO: documentation for quasi_quotation_position is wrong (SyntaxTo,SyntaxFrom should be SYntaxTerm,SyntaxPos).
+valid_termpos_(_Term, quasi_quotation_position(_From,_To,SyntaxTerm,SyntaxPos,_ContentPos)) :-
+    valid_termpos(SyntaxTerm, SyntaxPos), !.
+
+:- det(valid_termpos_dict/3).
+valid_termpos_dict(Key-Value, KeyValuePosList0, KeyValuePosList1) :-
+    selectchk(key_value_position(_From,_To,_SepFrom,_SepTo,Key,KeyPos,ValuePos),
+              KeyValuePosList0, KeyValuePosList1),
+    valid_termpos(Key, KeyPos),
+    valid_termpos(Value, ValuePos).
+
+:- det(list_tail/3).
+list_tail([X|Xs], HdPart, Tail) =>
+    HdPart = [X|HdPart2],
+    list_tail(Xs, HdPart2, Tail).
+list_tail(Tail0, HdPart, Tail) => HdPart = [], Tail0 = Tail.
 
 end_of_file.

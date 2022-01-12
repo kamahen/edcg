@@ -1,4 +1,5 @@
-:- use_module('../prolog/edcg.pl').  % :- use_module(library(edcg)).
+:- use_module('../prolog/edcg.pl').
+% :- use_module(library(edcg)).
 
 % Declare accumulators
 edcg:acc_info(adder, X, In, Out, plus(X,In,Out)).
@@ -6,9 +7,13 @@ edcg:acc_info(adder, X, In, Out, plus(X,In,Out)).
 % Declare predicates using these hidden arguments
 edcg:pred_info(len,0,[adder,dcg]).
 edcg:pred_info(increment,0,[adder]).
+edcg:pred_info(increment,1,[adder]).
 
 increment -->>
-    [1]:adder.
+    increment(1).
+
+increment(I) -->>
+    [I]:adder.
 
 
 len(Xs,N) :-

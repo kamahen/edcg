@@ -27,6 +27,7 @@ edcg:pred_info(sum_first_n_ssu,1,[adder]).
 edcg:pred_info(sum,0,[adder,dcg]).
 edcg:pred_info(expr_code,1,[size,code]).
 edcg:pred_info(expr_code_ssu,1,[size,code]).
+edcg:pred_info(maplist_x,2,[pollux,castor]).
 
 
 % flist(N,[],List) creates the list [1,2,...,N]
@@ -138,6 +139,15 @@ expr_code_ssu(I) ==>>
     {atomic(I)}, % TODO: this should be a guard
     [push(I)]:code,
     [1]:size.
+
+% Example of maplist-like predicate that has explicit accumulators.
+% TODO: verify the generated code in unit tests.
+
+maplist_x([], _Pred) ==>> [ ].
+maplist_x([X|Xs], Pred) ==>>
+    call(Pred, X):[pollux,castor],
+    maplist_x(Xs, Pred).
+
 
 
 :- use_module(library(plunit)).
