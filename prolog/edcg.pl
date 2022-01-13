@@ -71,10 +71,11 @@ edcg_expand_clause((H==>>B), Expansion, TermPos0, _) :-
     edcg_expand_clause_wrap((H==>>B), Expansion, TermPos0, _).
 
 edcg_expand_clause_wrap(Term, Expansion, TermPos0, TermPos) :-
-    % (   valid_termpos(Term, TermPos0)  % for debugging
-    % ->  true
-    % ;   throw(error(invalid_termpos_read(Term,TermPos0), _))
-    % ),
+    % TODO: the first check should always succeed, so remove it
+    (   valid_termpos(Term, TermPos0)  % for debugging
+    ->  true
+    ;   throw(error(invalid_termpos_read(Term,TermPos0), _))
+    ),
     (   '_expand_clause'(Term, Expansion, TermPos0, TermPos)
     ->  true
     ;   throw(error('FAILED_expand_clause'(Term, Expansion, TermPos0, TermPos), _))
@@ -95,13 +96,15 @@ edcg_expand_clause_wrap(Term, Expansion, TermPos0, TermPos) :-
     '_expand_head_body'(H, B, TH, TB, NewAcc, H_pos,B_pos, Hx_pos,Bx_pos),
     '_finish_acc'(NewAcc),
     !.
-'_expand_clause'((H,PB==>>B), Expansion, _TermPos0, _) => % TODO TermPos
+'_expand_clause'((H,PB==>>B), Expansion, _TermPos0, _TermPos) => % TODO: TermPos
     % '==>>'(',',(H,PB),B)
     Expansion = (TH,Guards=>TB2),
-    '_expand_guard'(PB, Guards),
+    '_expand_guard'(PB, Guards), % TODO: TermPos
     '_expand_head_body'(H, B, TH, TB, NewAcc, _H_pos,_B_pos, _Hx_pos,_Bx_pos),
     '_finish_acc_ssu'(NewAcc, TB, TB2),
     !.
+% H==>>B is essentially the same as H-->>B except that it produces =>
+% But it needs to come last because otherwise H,PB would not be detected
 '_expand_clause'((H==>>B), Expansion, TermPos0, TermPos) =>
     TermPos0 = term_position(From,To,ArrowFrom,ArrowTo,[H_pos,B_pos]),
     TermPos  = term_position(From,To,ArrowFrom,ArrowTo,[Hx_pos,Bx_pos]),
@@ -128,11 +131,11 @@ edcg_expand_clause_wrap(Term, Expansion, TermPos0, TermPos) :-
 
 
 :- det('_expand_head_body'/9).
-'_expand_head_body'(H, B, TH, TB, NewAcc, _H_pos,_B_pos, _Hx_pos,_Bx_pos) :-
+'_expand_head_body'(H, B, TH, TB, NewAcc, H_pos,_B_pos, Hx_pos,_Bx_pos) :-
     functor(H, Na, Ar),
     '_has_hidden'(H, HList), % TODO: can backtrack - should it?
     debug(edcg,'Expanding ~w',[H]),
-    '_new_goal'(H, HList, HArity, TH),
+    '_new_goal'(H, HList, HArity, TH, H_pos, Hx_pos),
     '_create_acc_pass'(HList, HArity, TH, Acc, Pass),
     '_expand_goal'(B, TB, Na/Ar, HList, Acc, NewAcc, Pass),
     !.
@@ -187,7 +190,7 @@ edcg_expand_clause_wrap(Term, Expansion, TermPos0, TermPos) :-
     \+'_list'(G),
     '_has_hidden'(G, []) =>
     '_make_list'(A, AList),
-    '_new_goal'(G, AList, GArity, TG),
+    '_new_goal'(G, AList, GArity, TG, _, _),
     '_use_acc_pass'(AList, GArity, TG, Acc, NewAcc, Pass).
 % Use G's regular hidden arguments & override defaults for those arguments
 % not in the head:
@@ -195,7 +198,7 @@ edcg_expand_clause_wrap(Term, Expansion, TermPos0, TermPos) :-
     \+'_list'(G),
     '_has_hidden'(G, GList), GList\==[] =>
     '_make_list'(A, L),
-    '_new_goal'(G, GList, GArity, TG),
+    '_new_goal'(G, GList, GArity, TG, _, _),
     '_replace_defaults'(GList, NGList, L),
     '_use_acc_pass'(NGList, GArity, TG, Acc, NewAcc, Pass).
 '_expand_goal'((L:A), Joiner, NaAr, _, Acc, NewAcc, _),
@@ -234,7 +237,7 @@ edcg_expand_clause_wrap(Term, Expansion, TermPos0, TermPos) :-
 % Defaulty cases:
 '_expand_goal'(G, TG, _HList, _, Acc, NewAcc, Pass) =>
     '_has_hidden'(G, GList), !,
-    '_new_goal'(G, GList, GArity, TG),
+    '_new_goal'(G, GList, GArity, TG, _, _),
     '_use_acc_pass'(GList, GArity, TG, Acc, NewAcc, Pass).
 
 % ==== The following was originally acc-pass.pl ====
@@ -376,11 +379,12 @@ edcg_expand_clause_wrap(Term, Expansion, TermPos0, TermPos) :-
 % Given a goal Goal and a list of hidden parameters GList
 % create a new goal TGoal with the correct number of arguments.
 % Also return the arity of the original goal.
-'_new_goal'(Goal, GList, GArity, TGoal) :-
+'_new_goal'(Goal, GList, GArity, TGoal, H_pos, Hx_pos) :-
     functor(Goal, Name, GArity),
     '_number_args'(GList, GArity, TArity),
     functor(TGoal, Name, TArity),
-    '_match'(1, GArity, Goal, TGoal).
+    '_match'(1, GArity, Goal, TGoal),
+    term_pos_expand(H_pos, GList, Hx_pos).
 
 % Add the number of arguments needed for the hidden parameters:
 '_number_args'([], N, N).
@@ -403,6 +407,30 @@ edcg_expand_clause_wrap(Term, Expansion, TermPos0, TermPos) :-
     ->  true
     ;   GList = []
     ).
+
+% Create a TermPos for a goal with expanded parameters
+term_pos_expand(Pos, _, _Expand_pos), var(Pos) => true. % TODO: remove DO NOT SUBMIT
+term_pos_expand(From-To, [], Expand_pos) =>
+    Expand_pos = From-To.
+term_pos_expand(From-To, GList, Expand_pos) =>
+    Expand_pos = term_position(From,To,From,To,PosExtra),
+    maplist(pos_extra(To,To), GList, PosExtra).
+term_pos_expand(term_position(From,To,FFrom,FTo,ArgsPos), GList, Expand_pos) =>
+    Expand_pos = term_position(From,To,FFrom,FTo,ArgsPosExtra),
+    maplist(pos_extra(To,To), GList, PosExtra),
+    append(ArgsPos, PosExtra, ArgsPosExtra).
+term_pos_expand(brace_term_position(From,To,ArgsPos), GList, Expand_pos) =>
+    Expand_pos = btrace_term_position(From,To,ArgsPosExtra),
+    maplist(pos_extra(To,To), GList, PosExtra),
+    append(ArgsPos, PosExtra, ArgsPosExtra).
+% Other things, such as `string_position` and
+% `parentheses_term_position, shouldn't appear.
+% And list_position (for accumulators) is handled separately
+
+% Map an existing From,To to From-To. The 3rd parameter is from Hlist
+% and is only used for controlling the number of elements in the
+% calling maplist.
+pos_extra(From, To, _, From-To).
 
 % Succeeds if A is an accumulator:
 '_is_acc'(A), atomic(A) => '_acc_info'(A, _, _, _, _, _, _).
@@ -498,15 +526,15 @@ valid_termpos_(String,  string_position(_From,_To)) :- string(String), !.
 valid_termpos_([],     _From-_To) :- !.
 valid_termpos_({Arg},   brace_term_position(_From,_To,ArgPos)) :-
     valid_termpos(Arg, ArgPos), !.
-% TODO: combine the two list_position clauses
-valid_termpos_([Hd|Tl], list_position(_From,_To, ElemsPos, none)) :-
-    maplist(valid_termpos, [Hd|Tl], ElemsPos),
-    list_tail([Hd|Tl], _, []), !.
 valid_termpos_([Hd|Tl], list_position(_From,_To, ElemsPos, TailPos)) :-
-    list_tail([Hd|Tl], HdPart, Tail),
-    tailPos \= none, Tail \= [],
-    maplist(valid_termpos, HdPart, ElemsPos),
-    valid_termpos(Tail, TailPos), !.
+    (   TailPos == none
+    ->  maplist(valid_termpos, [Hd|Tl], ElemsPos),
+        list_tail([Hd|Tl], _, [])
+    ;   list_tail([Hd|Tl], HdPart, Tail),
+        % Tail \== [], % note: can be var
+        maplist(valid_termpos, HdPart, ElemsPos),
+        valid_termpos(Tail, TailPos)
+    ), !.
 valid_termpos_(Term, term_position(_From,_To, FFrom,FTo,SubPos)) :-
     compound_name_arguments(Term, Name, Arguments),
     valid_termpos(Name, FFrom-FTo),
