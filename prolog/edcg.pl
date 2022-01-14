@@ -110,7 +110,7 @@ edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
 % But it needs to come last because otherwise H,PB would not be detected
 '_expand_clause'((H==>>B), Expansion, ClausePos0, ClausePos),
         ClausePos0 = term_position(From,To,ArrowFrom,ArrowTo,[HPos,BPos]) =>
-    ClausePos =     term_position(From,To,ArrowFrom,ArrowTo,[HxPos,BxPos]),
+    ClausePos =      term_position(From,To,ArrowFrom,ArrowTo,[HxPos,BxPos]),
     Expansion = (TH=>TB2),
     '_expand_head_body'(H, B, TH, TB, NewAcc, HPos,BPos, HxPos,BxPos),
     '_finish_acc_ssu'(NewAcc, TB, TB2),
@@ -365,9 +365,10 @@ edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
 '_finish_acc'([acc(_,Link,Link)|Acc]) :- '_finish_acc'(Acc).
 
 :- det('_finish_acc_ssu'/3).
+% TODO: add Layout info, to match the added LeftA=RightA goals
 '_finish_acc_ssu'([], TB, TB).
-'_finish_acc_ssu'([acc(_,Link0,Link1)|Acc], TB0, TB) :-
-    '_finish_acc_ssu'(Acc, (Link0=Link1,TB0), TB).
+'_finish_acc_ssu'([acc(_,LeftA,RightA)|Acc], TB0, TB) :-
+    '_finish_acc_ssu'(Acc, (LeftA=RightA,TB0), TB).
 
 % Replace elements in the Acc data structure:
 % Succeeds iff replacement is successful.
@@ -429,7 +430,9 @@ edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
     '_number_args'(GList, GArity, TArity),
     functor(TGoal, Name, TArity),
     '_match'(1, GArity, Goal, TGoal),
-    term_pos_expand(GPos, GList, GxPos).
+    ExtraArity is TArity - GArity,
+    length(Extras, ExtraArity),
+    term_pos_expand(GPos, Extras, GxPos).
 
 % Add the number of arguments needed for the hidden parameters:
 '_number_args'([], N, N).
