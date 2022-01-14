@@ -83,8 +83,7 @@ edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
     % (   valid_termpos(Expansion, ClausePos) % for debugging
     % ->  true
     % ;   throw(error(invalid_termpos_expansion(Expansion, ClausePos), _))
-    % ).
-    true.
+    true. % ).
 
 % :- det('_expand_clause'/4).
 % Perform EDCG macro expansion
@@ -205,10 +204,10 @@ edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
     NewAcc = Acc.
 '_expand_goal'(insert(X,Y), Expansion, _, _, Acc, NewAcc, _, Pos, ExpandPos) =>
     Pos = term_position(_From,_To,_InsertFrom,_InsertTo,[_XPos,_YPos]),
-    ExpandPos = _, % TODO: DO NOT SUBMIT
+    ExpandPos = _, % TODO: expanded goal location
     Expansion = (LeftA=X),
     '_replace_acc'(dcg, LeftA, RightA, Y, RightA, Acc, NewAcc), !.
-'_expand_goal'(insert(X,Y):A, Expansion, _, _, Acc, NewAcc, _, _Pos, _ExpandPos) => % TODO: DO NOT SUBMIT
+'_expand_goal'(insert(X,Y):A, Expansion, _, _, Acc, NewAcc, _, _Pos, _ExpandPos) => % TODO: expanded goal location
     Expansion = (LeftA=X),
     '_replace_acc'(A, LeftA, RightA, Y, RightA, Acc, NewAcc),
     debug(edcg,'Expanding accumulator goal: ~w',[insert(X,Y):A]),
@@ -218,7 +217,7 @@ edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
         \+'_list'(G),
         '_has_hidden'(G, []) =>
     Pos = term_position(_From,_To,_ColonFrom,_ColonTo,[_GPos,_APos]),
-    ExpandPos = _, % TODO: DO NOT SUBMIT
+    ExpandPos = _, % TODO: expanded goal location
     '_make_list'(A, AList),
     '_new_goal'(G, AList, GArity, TG, _, _),
     '_use_acc_pass'(AList, GArity, TG, Acc, NewAcc, Pass).
@@ -228,7 +227,7 @@ edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
         \+'_list'(G),
         '_has_hidden'(G, GList), GList\==[] =>
     Pos = term_position(_From,_To,_ColonFrom,_ColonTo,[_G1Pos,_G2Pos]),
-    ExpandPos = _, % TODO: DO NOT SUBMIT
+    ExpandPos = _, % TODO: expanded goal location
     '_make_list'(A, L),
     '_new_goal'(G, GList, GArity, TG, _, _),
     '_replace_defaults'(GList, NGList, L),
@@ -236,9 +235,9 @@ edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
 '_expand_goal'((L:A), Joiner, NaAr, _, Acc, NewAcc, _, Pos, ExpandPos),
         '_list'(L) =>
     Pos = term_position(_From,_To,_ColonFrom,_ColonTo,[_G1Pos,_G2Pos]),
-    ExpandPos = _, % TODO: DO NOT SUBMIT
+    ExpandPos = _, % TODO: expanded goal location
     '_joiner'(L, A, NaAr, Joiner, Acc, NewAcc).
-'_expand_goal'(L, Joiner, NaAr, _, Acc, NewAcc, _, _Pos, _ExpandPos), % TODO: DO NOT SUBMIT
+'_expand_goal'(L, Joiner, NaAr, _, Acc, NewAcc, _, _Pos, _ExpandPos), % TODO: expanded goal location
         '_list'(L) =>
     '_joiner'(L, dcg, NaAr, Joiner, Acc, NewAcc).
 '_expand_goal'((X/A/Y), Expansion, _, _, Acc, NewAcc, _, Pos, ExpandPos),
@@ -247,14 +246,14 @@ edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
     Pos = term_position(_From,_To,_Slash2From,_Slash2To,
                         [term_position(_XFrom,_XTo,_Slash1From,_Slash1To, [_XPos,_APos]),
                          _YPos]),
-    ExpandPos = _, % TODO: DO NOT SUBMIT
+    ExpandPos = _, % TODO: expanded goal location
     Expansion = true,
     NewAcc = Acc.
 '_expand_goal'((X/A), Expansion, _, _, Acc, NewAcc, _, Pos, ExpandPos),
         atomic(A),
         member(acc(A,X,_), Acc) =>
     Pos = term_position(_From,_To,_SlashFrom,_SlashTo,[_XPos,_APos]),
-    ExpandPos = _, % TODO: DO NOT SUBMIT
+    ExpandPos = _, % TODO: expanded goal location
     Expansion = true,
     NewAcc = Acc,
     debug(edcg,'Expanding accumulator goal: ~w',[X/A]),
@@ -263,7 +262,7 @@ edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
         atomic(A),
         member(pass(A,X), Pass) =>
     Pos = term_position(_From,_To,_SlashFrom,_SlashTo,[_XPos,_APos]),
-    ExpandPos = _, % TODO: DO NOT SUBMIT
+    ExpandPos = _, % TODO: expanded goal location
     Expansion = true,
     NewAcc = Acc,
     debug(edcg,'Expanding passed argument goal: ~w',[X/A]),
@@ -272,12 +271,12 @@ edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
         atomic(A),
         member(acc(A,_,X), Acc) =>
     Pos = term_position(_From,_To,_SlashFrom,_SlashTo,[_APos,_XPos]),
-    ExpandPos = _, % TODO: DO NOT SUBMIT
+    ExpandPos = _, % TODO: expanded goal location
     Expansion = true,
     NewAcc = Acc.
 '_expand_goal'((X/Y), true, NaAr, _, Acc, NewAcc, _, Pos, ExpandPos) =>
     Pos = term_position(_From,_To,_SlashFrom,_SlashTo,[_XPos,_YPos]),
-    ExpandPos = _, % TODO: DO NOT SUBMIT
+    ExpandPos = _, % TODO: expanded goal location
     NewAcc = Acc,
     print_message(warning,missing_hidden_parameter(NaAr,X/Y)).
 % Defaulty cases:
@@ -455,7 +454,7 @@ edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
     ).
 
 % Create an ExpandPos for a goal's Pos with expanded parameters
-term_pos_expand(Pos, _, _ExpandPos), var(Pos) => true. % TODO: remove DO NOT SUBMIT
+term_pos_expand(Pos, _, _ExpandPos), var(Pos) => true. % TODO: remove
 term_pos_expand(From-To, [], ExpandPos) =>
     ExpandPos = From-To.
 term_pos_expand(From-To, GList, ExpandPos) =>
@@ -551,7 +550,6 @@ prolog:message(not_a_hidden_param(Name)) -->
     ['~w is not a hidden parameter'-[Name]].
 % === The following are for debugging term_expansion/4
 
-% :- det(valid_termpos/2). % DO NOT SUBMIT
 %! valid_termpos(+Term, ?TermPos) is semidet.
 % Checks that a Term has an appropriate TermPos.
 % This should always succeed:
@@ -562,7 +560,7 @@ prolog:message(not_a_hidden_param(Name)) -->
 valid_termpos(Term, TermPos) :-
     (   valid_termpos_(Term, TermPos)
     ->  true
-    ;   fail % throw(error(invalid_termpos(Term,TermPos), _)) % DO NOT SUBMIT
+    ;   fail % throw(error(invalid_termpos(Term,TermPos), _))
     ).
 
 valid_termpos_(Var,    _From-_To) :- var(Var).
