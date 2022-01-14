@@ -14,20 +14,39 @@ edcg:acc_info(size, T, In, Out, Out is In+T).
 % Declare passed arguments
 edcg:pass_info(pollux).
 
+% For testing, define pred_info/3 to throw an error if it fails.  This
+% means that all non-expanded goals in --> > or ==>> clauses must be
+% wrapped with {...}, similar to how DCGs are done.
+
+edcg:pred_info(Name, Arity, Accs) :-
+    (   pred_info_(Name, Arity, Accs)
+    *-> true
+    ;   Name == (!), Arity == 0
+    ->  true
+    ;   Name == call
+    ->  true
+    ;   throw(error(no_pred_info(Name/Arity), _))
+    ).
+
+
 % Declare predicates using these hidden arguments
-edcg:pred_info(p,1,[castor,pollux]).
-edcg:pred_info(q,1,[castor,pollux]).
-edcg:pred_info(r,1,[castor,pollux]).
-edcg:pred_info(flist,1,[fwd]).
-edcg:pred_info(flist_ssu,1,[fwd]).
-edcg:pred_info(rlist,1,[rev]).
-edcg:pred_info(rlist_ssu,1,[rev]).
-edcg:pred_info(sum_first_n,1,[adder]).
-edcg:pred_info(sum_first_n_ssu,1,[adder]).
-edcg:pred_info(sum,0,[adder,dcg]).
-edcg:pred_info(expr_code,1,[size,code]).
-edcg:pred_info(expr_code_ssu,1,[size,code]).
-edcg:pred_info(maplist_x,2,[pollux,castor]).
+pred_info_(p,1,[castor,pollux]).
+pred_info_(q,1,[castor,pollux]).
+pred_info_(r,1,[castor,pollux]).
+pred_info_(flist,1,[fwd]).
+pred_info_(flist_ssu,1,[fwd]).
+pred_info_(rlist,1,[rev]).
+pred_info_(rlist_ssu,1,[rev]).
+pred_info_(sum_first_n,1,[adder]).
+pred_info_(sum_first_n_ssu,1,[adder]).
+pred_info_(sum,0,[adder,dcg]).
+pred_info_(expr_code,1,[size,code]).
+pred_info_(expr_code_ssu,1,[size,code]).
+pred_info_(maplist_x,2,[pollux,castor]).
+pred_info_(guarded,1,[pollux,castor]).
+% In unit tests:
+pred_info_(p, 2, [dcg]). % For test ssu1
+pred_info_(p2, 2, [dcg]). % For test ssu_guard
 
 
 % flist(N,[],List) creates the list [1,2,...,N]
@@ -35,17 +54,17 @@ flist(0) -->>
     !,
     [].
 flist(N) -->>
-    N>0,
+    {N>0},
     [N]:fwd,
-    N1 is N-1,
+    {N1 is N-1},
     flist(N1).
 
 flist_ssu(0) ==>>
     [].
 flist_ssu(N) ==>>
-    N>0, % TODO: this should be a guard
+    {N>0}, % TODO: this should be a guard
     [N]:fwd,
-    N1 is N-1,
+    {N1 is N-1},
     flist_ssu(N1).
 
 
@@ -54,17 +73,17 @@ rlist(0) -->>
     !,
     [].
 rlist(N) -->>
-    N>0,
+    {N>0},
     [N]:rev,
-    N1 is N-1,
+    {N1 is N-1},
     rlist(N1).
 
 rlist_ssu(0) ==>>
     [].
 rlist_ssu(N) ==>>
-    N>0, % TODO: this should be a guard
+    {N>0}, % TODO: this should be a guard
     [N]:rev,
-    N1 is N-1,
+    {N1 is N-1},
     rlist_ssu(N1).
 
 
@@ -73,17 +92,17 @@ sum_first_n(0) -->>
     !,
     [].
 sum_first_n(N) -->>
-    N>0,
+    {N>0},
     [N]:adder,
-    N1 is N-1,
+    {N1 is N-1},
     sum_first_n(N1).
 
 sum_first_n_ssu(0) ==>>
     [].
 sum_first_n_ssu(N) ==>>
-    N>0, % TODO: this should be a guard
+    {N>0}, % TODO: this should be a guard
     [N]:adder,
-    N1 is N-1,
+    {N1 is N-1},
     sum_first_n_ssu(N1).
 
 
@@ -101,7 +120,7 @@ sum -->>
 % Program that uses castor and pollux accumulators
 
 p(X) -->>
-    Y is X + 1,
+    {Y is X + 1},
     q(Y),
     r(Y).
 
@@ -148,6 +167,12 @@ maplist_x([X|Xs], Pred) ==>>
     call(Pred, X):[pollux,castor],
     maplist_x(Xs, Pred).
 
+% For testing: an example of guards with ==>>
+guarded(X), ? { t1(X) }, ? { t2(X) } ==>> {bar(X)}, {bar2(X)}.
+t1(_)   :- fail. % To stop "not defined" warnings.
+t2(_)   :- fail. % To stop "not defined" warnings.
+bar(_)  :- fail. % To stop "not defined" warnings.
+bar2(_) :- fail. % To stop "not defined" warnings.
 
 
 :- use_module(library(plunit)).
@@ -220,8 +245,6 @@ test(expr1_ssu, [nondet]) :-
     assertion(Size == 7),
     assertion(Code == [push(a), push(b), plus, push(c), push(d), plus, plus]).
 
-edcg:pred_info(p, 2, [dcg]). % For test ssu1
-
 test(ssu1,
      [Expansion =@=
      (   p(b, X, S0, S) =>
@@ -230,15 +253,13 @@ test(ssu1,
      )]) :-
     expand_term((p(b, X) ==>> {X=2}), Expansion).
 
-edcg:pred_info(p2, 2, [dcg]). % FOr test ssu_guard
-
 test(ssu2_guard,
      [Expansion =@=
      (   p2(A, X, S0, S), A=a =>
              S0=S,
              X=1
      )]) :-
-    expand_term((p2(A, X), ? A=a ==>> {X=1}), Expansion).
+    expand_term((p2(A, X), ? {A=a} ==>> {X=1}), Expansion).
 
 
 :- end_tests(edcg_examples).
