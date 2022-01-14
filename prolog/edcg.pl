@@ -54,62 +54,66 @@ user:term_expansion(Term, Layout0, Expansion, Layout) :-
     wants_edcg_expansion,
     edcg_expand_clause(Term, Expansion, Layout0, Layout).
 
-% TODO:
+% TODO: Uncomment the following for guitracer.
 % prolog_clause:unify_clause_hook(Read, Decompiled, Module, TermPos0, TermPos) :-
 %     wants_edcg_expansion(Module),
 %     edcg_expand_clause(Read, Decompiled, TermPos0, TermPos).
 
-% TODO:
+% TODO: implement the following for guitracer
 %   prolog_clause:make_varnames_hook(ReadClause, DecompiledClause, Offsets, Names, Term) :- ...
 
 % TODO: support ((H,PB-->>B) [same as regular DCG]
-edcg_expand_clause((H-->>B), Expansion, TermPos0, _) :-
-    edcg_expand_clause_wrap((H-->>B), Expansion, TermPos0, _).
-edcg_expand_clause((H,PB==>>B), Expansion, TermPos0, _) :-
-    edcg_expand_clause_wrap((H,PB==>>B), Expansion, TermPos0, _).
-edcg_expand_clause((H==>>B), Expansion, TermPos0, _) :-
-    edcg_expand_clause_wrap((H==>>B), Expansion, TermPos0, _).
+edcg_expand_clause((H-->>B), Expansion, ClausePos0, ClausePos) :-
+    edcg_expand_clause_wrap((H-->>B), Expansion, ClausePos0, ClausePos).
+edcg_expand_clause((H,PB==>>B), Expansion, ClausePos0, ClausePos) :-
+    edcg_expand_clause_wrap((H,PB==>>B), Expansion, ClausePos0, ClausePos).
+edcg_expand_clause((H==>>B), Expansion, ClausePos0, ClausePos) :-
+    edcg_expand_clause_wrap((H==>>B), Expansion, ClausePos0, ClausePos).
 
-edcg_expand_clause_wrap(Term, Expansion, TermPos0, TermPos) :-
+edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
     % TODO: the first check should always succeed, so remove it
-    (   valid_termpos(Term, TermPos0)  % for debugging
+    (   valid_termpos(Clause, ClausePos0)  % for debugging
     ->  true
-    ;   throw(error(invalid_termpos_read(Term,TermPos0), _))
+    ;   throw(error(invalid_termpos_read(Clause,ClausePos0), _))
     ),
-    (   '_expand_clause'(Term, Expansion, TermPos0, TermPos)
+    (   '_expand_clause'(Clause, Expansion, ClausePos0, ClausePos)
     ->  true
-    ;   throw(error('FAILED_expand_clause'(Term, Expansion, TermPos0, TermPos), _))
+    ;   throw(error('FAILED_expand_clause'(Clause, Expansion, ClausePos0, ClausePos), _))
     ),
-    % (   valid_termpos(Expansion, TermPos) % for debugging
+    % (   valid_termpos(Expansion, ClausePos) % for debugging
     % ->  true
-    % ;   throw(error(invalid_termpos_expansion(Expansion, TermPos), _))
+    % ;   throw(error(invalid_termpos_expansion(Expansion, ClausePos), _))
     % ).
     true.
 
 % :- det('_expand_clause'/4).
 % Perform EDCG macro expansion
 % TODO: support ((H,PB-->>B) [same as regular DCG]
-'_expand_clause'((H-->>B), Expansion, TermPos0, TermPos) =>
-    TermPos0 = term_position(From,To,ArrowFrom,ArrowTo,[H_pos,B_pos]),
-    TermPos  = term_position(From,To,ArrowFrom,ArrowTo,[Hx_pos,Bx_pos]),
+
+'_expand_clause'(Clause, Expansion, ClausePos0, ClausePos),
+        ClausePos0 = parentheses_term_position(From,To,InnerClausePos0) =>
+    ClausePos =      parentheses_term_position(From,To,InnerClausePos),
+    '_expand_clause'(Clause, Expansion, InnerClausePos0, InnerClausePos).
+'_expand_clause'((H-->>B), Expansion, ClausePos0, ClausePos),
+        ClausePos0 = term_position(From,To,ArrowFrom,ArrowTo,[HPos,BPos]) =>
+    ClausePos =      term_position(From,To,ArrowFrom,ArrowTo,[HxPos,BxPos]),
     Expansion = (TH:-TB),
-    '_expand_head_body'(H, B, TH, TB, NewAcc, H_pos,B_pos, Hx_pos,Bx_pos),
+    '_expand_head_body'(H, B, TH, TB, NewAcc, HPos,BPos, HxPos,BxPos),
     '_finish_acc'(NewAcc),
     !.
-'_expand_clause'((H,PB==>>B), Expansion, _TermPos0, _TermPos) => % TODO: TermPos
-    % '==>>'(',',(H,PB),B)
+'_expand_clause'((H,PB==>>B), Expansion, _ClausePos0, _ClausePos) => % TODO: ClausePos
     Expansion = (TH,Guards=>TB2),
-    '_expand_guard'(PB, Guards), % TODO: TermPos
-    '_expand_head_body'(H, B, TH, TB, NewAcc, _H_pos,_B_pos, _Hx_pos,_Bx_pos),
+    '_expand_guard'(PB, Guards), % TODO: ClausePos
+    '_expand_head_body'(H, B, TH, TB, NewAcc, _HPos,_BPos, _HxPos,_BxPos),
     '_finish_acc_ssu'(NewAcc, TB, TB2),
     !.
 % H==>>B is essentially the same as H-->>B except that it produces =>
 % But it needs to come last because otherwise H,PB would not be detected
-'_expand_clause'((H==>>B), Expansion, TermPos0, TermPos) =>
-    TermPos0 = term_position(From,To,ArrowFrom,ArrowTo,[H_pos,B_pos]),
-    TermPos  = term_position(From,To,ArrowFrom,ArrowTo,[Hx_pos,Bx_pos]),
+'_expand_clause'((H==>>B), Expansion, ClausePos0, ClausePos),
+        ClausePos0 = term_position(From,To,ArrowFrom,ArrowTo,[HPos,BPos]) =>
+    ClausePos =     term_position(From,To,ArrowFrom,ArrowTo,[HxPos,BxPos]),
     Expansion = (TH=>TB2),
-    '_expand_head_body'(H, B, TH, TB, NewAcc, H_pos,B_pos, Hx_pos,Bx_pos),
+    '_expand_head_body'(H, B, TH, TB, NewAcc, HPos,BPos, HxPos,BxPos),
     '_finish_acc_ssu'(NewAcc, TB, TB2),
     !.
 
@@ -131,113 +135,155 @@ edcg_expand_clause_wrap(Term, Expansion, TermPos0, TermPos) :-
 
 
 :- det('_expand_head_body'/9).
-'_expand_head_body'(H, B, TH, TB, NewAcc, H_pos,_B_pos, Hx_pos,_Bx_pos) :-
+'_expand_head_body'(H, B, TH, TB, NewAcc, HPos,BPos, HxPos,BxPos) :-
     functor(H, Na, Ar),
     '_has_hidden'(H, HList), % TODO: can backtrack - should it?
     debug(edcg,'Expanding ~w',[H]),
-    '_new_goal'(H, HList, HArity, TH, H_pos, Hx_pos),
+    '_new_goal'(H, HList, HArity, TH, HPos, HxPos),
     '_create_acc_pass'(HList, HArity, TH, Acc, Pass),
-    '_expand_goal'(B, TB, Na/Ar, HList, Acc, NewAcc, Pass),
+    '_expand_goal'(B, TB, Na/Ar, HList, Acc, NewAcc, Pass, BPos, BxPos),
     !.
 
 % Expand a goal:
-'_expand_goal'((G1,G2), Expansion, NaAr, HList, Acc, NewAcc, Pass) =>
+'_expand_goal'(Goal, Expansion, NaAr, HList, Acc, NewAcc, Pass, Pos, ExpandPos),
+        Pos =   parentheses_term_position(From,To,InnerPos) =>
+    ExpandPos = parentheses_term_position(From,To,InnerExpandPos),
+    '_expand_goal'(Goal, Expansion, NaAr, HList, Acc, NewAcc, Pass, InnerPos, InnerExpandPos).
+'_expand_goal'((G1,G2), Expansion, NaAr, HList, Acc, NewAcc, Pass, Pos, ExpandPos) =>
+    Pos       = term_position(From,To,CommaFrom,CommaTo,[G1Pos,G2Pos]),
+    ExpandPos = term_position(From,To,CommaFrom,CommaTo,[G1xPos,G2xPos]),
     Expansion = (TG1,TG2),
-    '_expand_goal'(G1, TG1, NaAr, HList, Acc, MidAcc, Pass),
-    '_expand_goal'(G2, TG2, NaAr, HList, MidAcc, NewAcc, Pass).
-'_expand_goal'((G1->G2;G3), Expansion, NaAr, HList, Acc, NewAcc, Pass) =>
+    '_expand_goal'(G1, TG1, NaAr, HList, Acc, MidAcc, Pass, G1Pos, G1xPos),
+    '_expand_goal'(G2, TG2, NaAr, HList, MidAcc, NewAcc, Pass, G2Pos, G2xPos).
+'_expand_goal'((G1->G2;G3), Expansion, NaAr, HList, Acc, NewAcc, Pass, Pos, ExpandPos) =>
+    Pos       = term_position(From,To,SemicolonFrom,SemicolonTo,
+                              [term_position(IfThenFrom,IfThenTo,ArrowFrom,ArrowTo,[G1Pos,G2Pos]), G3Pos]),
+    ExpandPos = term_position(From,To,SemicolonFrom,SemicolonTo,
+                              [term_position(IfThenFrom,IfThenTo,ArrowFrom,ArrowTo,[TG1Pos,TG2Pos]), TG3Pos]),
     Expansion = (TG1->TG2;TG3),
-    '_expand_goal'(G1, TG1, NaAr, HList, Acc, MidAcc, Pass),
-    '_expand_goal'(G2, MG2, NaAr, HList, MidAcc, Acc1, Pass),
-    '_expand_goal'(G3, MG3, NaAr, HList, Acc, Acc2, Pass),
+    '_expand_goal'(G1, TG1, NaAr, HList, Acc, MidAcc, Pass, G1Pos, TG1Pos),
+    '_expand_goal'(G2, MG2, NaAr, HList, MidAcc, Acc1, Pass, G2Pos, TG2Pos),
+    '_expand_goal'(G3, MG3, NaAr, HList, Acc, Acc2, Pass, G3Pos, TG3Pos),
     '_merge_acc'(Acc, Acc1, MG2, TG2, Acc2, MG3, TG3, NewAcc).
-'_expand_goal'((G1*->G2;G3), Expansion, NaAr, HList, Acc, NewAcc, Pass) =>
+'_expand_goal'((G1*->G2;G3), Expansion, NaAr, HList, Acc, NewAcc, Pass, Pos, ExpandPos) =>
+    Pos       = term_position(From,To,SemicolonFrom,SemicolonTo,
+                              [term_position(IfThenFrom,IfThenTo,ArrowFrom,ArrowTo,[G1Pos,G2Pos]), G3Pos]),
+    ExpandPos = term_position(From,To,SemicolonFrom,SemicolonTo,
+                              [term_position(IfThenFrom,IfThenTo,ArrowFrom,ArrowTo,[TG1Pos,TG2Pos]), TG3Pos]),
     Expansion = (TG1*->TG2;TG3),
-    '_expand_goal'(G1, TG1, NaAr, HList, Acc, MidAcc, Pass),
-    '_expand_goal'(G2, MG2, NaAr, HList, MidAcc, Acc1, Pass),
-    '_expand_goal'(G3, MG3, NaAr, HList, Acc, Acc2, Pass),
+    '_expand_goal'(G1, TG1, NaAr, HList, Acc, MidAcc, Pass, G1Pos, TG1Pos),
+    '_expand_goal'(G2, MG2, NaAr, HList, MidAcc, Acc1, Pass, G2Pos, TG2Pos),
+    '_expand_goal'(G3, MG3, NaAr, HList, Acc, Acc2, Pass, G3Pos, TG3Pos),
     '_merge_acc'(Acc, Acc1, MG2, TG2, Acc2, MG3, TG3, NewAcc).
-'_expand_goal'((G1;G2), Expansion, NaAr, HList, Acc, NewAcc, Pass) =>
+'_expand_goal'((G1;G2), Expansion, NaAr, HList, Acc, NewAcc, Pass, Pos, ExpandPos) =>
+    Pos       = term_position(From,To,SemicolonFrom,SemicolonTo,[G1Pos,G2Pos]),
+    ExpandPos = term_position(From,To,SemicolonFrom,SemicolonTo,[G1xPos,G2xPos]),
     Expansion = (TG1;TG2),
-    '_expand_goal'(G1, MG1, NaAr, HList, Acc, Acc1, Pass),
-    '_expand_goal'(G2, MG2, NaAr, HList, Acc, Acc2, Pass),
+    '_expand_goal'(G1, MG1, NaAr, HList, Acc, Acc1, Pass, G1Pos, G1xPos),
+    '_expand_goal'(G2, MG2, NaAr, HList, Acc, Acc2, Pass, G2Pos, G2xPos),
     '_merge_acc'(Acc, Acc1, MG1, TG1, Acc2, MG2, TG2, NewAcc).
-'_expand_goal'((G1->G2), Expansion, NaAr, HList, Acc, NewAcc, Pass) =>
+'_expand_goal'((G1->G2), Expansion, NaAr, HList, Acc, NewAcc, Pass, Pos, ExpandPos) =>
+    Pos       = term_position(From,To,ArrowFrom,ArrowTo,[G1Pos,G2Pos]),
+    ExpandPos = term_position(From,To,ArrowFrom,ArrowTo,[G1xPos,G2xPos]),
     Expansion = (TG1->TG2),
-    '_expand_goal'(G1, TG1, NaAr, HList, Acc, MidAcc, Pass),
-    '_expand_goal'(G2, TG2, NaAr, HList, MidAcc, NewAcc, Pass).
-'_expand_goal'((G1*->G2), Expansion, NaAr, HList, Acc, NewAcc, Pass) =>
+    '_expand_goal'(G1, TG1, NaAr, HList, Acc, MidAcc, Pass, G1Pos, G1xPos),
+    '_expand_goal'(G2, TG2, NaAr, HList, MidAcc, NewAcc, Pass, G2Pos, G2xPos).
+'_expand_goal'((G1*->G2), Expansion, NaAr, HList, Acc, NewAcc, Pass, Pos, ExpandPos) =>
+    Pos       = term_position(From,To,ArrowFrom,ArrowTo,[G1Pos,G2Pos]),
+    ExpandPos = term_position(From,To,ArrowFrom,ArrowTo,[G1xPos,G2xPos]),
     Expansion = (TG1*->TG2),
-    '_expand_goal'(G1, TG1, NaAr, HList, Acc, MidAcc, Pass),
-    '_expand_goal'(G2, TG2, NaAr, HList, MidAcc, NewAcc, Pass).
-'_expand_goal'((\+G), Expansion, NaAr, HList, Acc, NewAcc, Pass) =>
+    '_expand_goal'(G1, TG1, NaAr, HList, Acc, MidAcc, Pass, G1Pos, G1xPos),
+    '_expand_goal'(G2, TG2, NaAr, HList, MidAcc, NewAcc, Pass, G2Pos, G2xPos).
+'_expand_goal'((\+G), Expansion, NaAr, HList, Acc, NewAcc, Pass, Pos, ExpandPos) =>
+    Pos       =  term_position(From,To,NotFrom,NotTo,[GPos]),
+    ExpandPos = term_position(From,To,NotFrom,NotTo,[GxPos]),
     Expansion = (\+TG),
     NewAcc = Acc,
-    '_expand_goal'(G, TG, NaAr, HList, Acc, _TempAcc, Pass).
-'_expand_goal'({G}, Expansion, _, _, Acc, NewAcc, _) =>
+    '_expand_goal'(G, TG, NaAr, HList, Acc, _TempAcc, Pass, GPos, GxPos).
+'_expand_goal'({G}, Expansion, _, _, Acc, NewAcc, _, _Pos, _ExpandPos) =>
     Expansion = G,
     NewAcc = Acc.
-'_expand_goal'(insert(X,Y), Expansion, _, _, Acc, NewAcc, _) =>
+'_expand_goal'(insert(X,Y), Expansion, _, _, Acc, NewAcc, _, Pos, ExpandPos) =>
+    Pos = term_position(_From,_To,_InsertFrom,_InsertTo,[_XPos,_YPos]),
+    ExpandPos = _, % TODO: DO NOT SUBMIT
     Expansion = (LeftA=X),
     '_replace_acc'(dcg, LeftA, RightA, Y, RightA, Acc, NewAcc), !.
-'_expand_goal'(insert(X,Y):A, Expansion, _, _, Acc, NewAcc, _) =>
+'_expand_goal'(insert(X,Y):A, Expansion, _, _, Acc, NewAcc, _, _Pos, _ExpandPos) => % TODO: DO NOT SUBMIT
     Expansion = (LeftA=X),
     '_replace_acc'(A, LeftA, RightA, Y, RightA, Acc, NewAcc),
     debug(edcg,'Expanding accumulator goal: ~w',[insert(X,Y):A]),
     !.
 % Force hidden arguments in L to be appended to G:
-'_expand_goal'((G:A), TG, _, _HList, Acc, NewAcc, Pass),
-    \+'_list'(G),
-    '_has_hidden'(G, []) =>
+'_expand_goal'((G:A), TG, _, _HList, Acc, NewAcc, Pass, Pos, ExpandPos),
+        \+'_list'(G),
+        '_has_hidden'(G, []) =>
+    Pos = term_position(_From,_To,_ColonFrom,_ColonTo,[_GPos,_APos]),
+    ExpandPos = _, % TODO: DO NOT SUBMIT
     '_make_list'(A, AList),
     '_new_goal'(G, AList, GArity, TG, _, _),
     '_use_acc_pass'(AList, GArity, TG, Acc, NewAcc, Pass).
 % Use G's regular hidden arguments & override defaults for those arguments
 % not in the head:
-'_expand_goal'((G:A), TG, _, _HList, Acc, NewAcc, Pass),
-    \+'_list'(G),
-    '_has_hidden'(G, GList), GList\==[] =>
+'_expand_goal'((G:A), TG, _, _HList, Acc, NewAcc, Pass, Pos, ExpandPos),
+        \+'_list'(G),
+        '_has_hidden'(G, GList), GList\==[] =>
+    Pos = term_position(_From,_To,_ColonFrom,_ColonTo,[_G1Pos,_G2Pos]),
+    ExpandPos = _, % TODO: DO NOT SUBMIT
     '_make_list'(A, L),
     '_new_goal'(G, GList, GArity, TG, _, _),
     '_replace_defaults'(GList, NGList, L),
     '_use_acc_pass'(NGList, GArity, TG, Acc, NewAcc, Pass).
-'_expand_goal'((L:A), Joiner, NaAr, _, Acc, NewAcc, _),
-    '_list'(L) =>
+'_expand_goal'((L:A), Joiner, NaAr, _, Acc, NewAcc, _, Pos, ExpandPos),
+        '_list'(L) =>
+    Pos = term_position(_From,_To,_ColonFrom,_ColonTo,[_G1Pos,_G2Pos]),
+    ExpandPos = _, % TODO: DO NOT SUBMIT
     '_joiner'(L, A, NaAr, Joiner, Acc, NewAcc).
-'_expand_goal'(L, Joiner, NaAr, _, Acc, NewAcc, _),
-    '_list'(L) =>
+'_expand_goal'(L, Joiner, NaAr, _, Acc, NewAcc, _, _Pos, _ExpandPos), % TODO: DO NOT SUBMIT
+        '_list'(L) =>
     '_joiner'(L, dcg, NaAr, Joiner, Acc, NewAcc).
-'_expand_goal'((X/A), Expansion, _, _, Acc, NewAcc, _),
-    atomic(A),
-    member(acc(A,X,_), Acc) =>
+'_expand_goal'((X/A/Y), Expansion, _, _, Acc, NewAcc, _, Pos, ExpandPos),
+        member(acc(A,X,Y), Acc),
+        var(X), var(Y), atomic(A) =>
+    Pos = term_position(_From,_To,_Slash2From,_Slash2To,
+                        [term_position(_XFrom,_XTo,_Slash1From,_Slash1To, [_XPos,_APos]),
+                         _YPos]),
+    ExpandPos = _, % TODO: DO NOT SUBMIT
+    Expansion = true,
+    NewAcc = Acc.
+'_expand_goal'((X/A), Expansion, _, _, Acc, NewAcc, _, Pos, ExpandPos),
+        atomic(A),
+        member(acc(A,X,_), Acc) =>
+    Pos = term_position(_From,_To,_SlashFrom,_SlashTo,[_XPos,_APos]),
+    ExpandPos = _, % TODO: DO NOT SUBMIT
     Expansion = true,
     NewAcc = Acc,
     debug(edcg,'Expanding accumulator goal: ~w',[X/A]),
     !.
-'_expand_goal'((X/A), Expansion, _, _, Acc, NewAcc, Pass),
-    atomic(A),
-    member(pass(A,X), Pass) =>
+'_expand_goal'((X/A), Expansion, _, _, Acc, NewAcc, Pass, Pos, ExpandPos),
+        atomic(A),
+        member(pass(A,X), Pass) =>
+    Pos = term_position(_From,_To,_SlashFrom,_SlashTo,[_XPos,_APos]),
+    ExpandPos = _, % TODO: DO NOT SUBMIT
     Expansion = true,
     NewAcc = Acc,
     debug(edcg,'Expanding passed argument goal: ~w',[X/A]),
     !.
-'_expand_goal'((A/X), Expansion, _, _, Acc, NewAcc, _),
-    atomic(A),
-    member(acc(A,_,X), Acc) =>
+'_expand_goal'((A/X), Expansion, _, _, Acc, NewAcc, _, Pos, ExpandPos),
+        atomic(A),
+        member(acc(A,_,X), Acc) =>
+    Pos = term_position(_From,_To,_SlashFrom,_SlashTo,[_APos,_XPos]),
+    ExpandPos = _, % TODO: DO NOT SUBMIT
     Expansion = true,
     NewAcc = Acc.
-'_expand_goal'((X/A/Y), Expansion, _, _, Acc, NewAcc, _),
-    member(acc(A,X,Y), Acc),
-    var(X), var(Y), atomic(A) =>
-    Expansion = true,
-    NewAcc = Acc.
-'_expand_goal'((X/Y), true, NaAr, _, Acc, NewAcc, _) =>
+'_expand_goal'((X/Y), true, NaAr, _, Acc, NewAcc, _, Pos, ExpandPos) =>
+    Pos = term_position(_From,_To,_SlashFrom,_SlashTo,[_XPos,_YPos]),
+    ExpandPos = _, % TODO: DO NOT SUBMIT
     NewAcc = Acc,
     print_message(warning,missing_hidden_parameter(NaAr,X/Y)).
 % Defaulty cases:
-'_expand_goal'(G, TG, _HList, _, Acc, NewAcc, Pass) =>
+'_expand_goal'(G, TG, _HList, _, Acc, NewAcc, Pass, Pos, ExpandPos) =>
     '_has_hidden'(G, GList), !,
-    '_new_goal'(G, GList, GArity, TG, _, _),
+    '_new_goal'(G, GList, GArity, TG, Pos, ExpandPos),
     '_use_acc_pass'(GList, GArity, TG, Acc, NewAcc, Pass).
 
 % ==== The following was originally acc-pass.pl ====
@@ -379,12 +425,12 @@ edcg_expand_clause_wrap(Term, Expansion, TermPos0, TermPos) :-
 % Given a goal Goal and a list of hidden parameters GList
 % create a new goal TGoal with the correct number of arguments.
 % Also return the arity of the original goal.
-'_new_goal'(Goal, GList, GArity, TGoal, H_pos, Hx_pos) :-
+'_new_goal'(Goal, GList, GArity, TGoal, GPos, GxPos) :-
     functor(Goal, Name, GArity),
     '_number_args'(GList, GArity, TArity),
     functor(TGoal, Name, TArity),
     '_match'(1, GArity, Goal, TGoal),
-    term_pos_expand(H_pos, GList, Hx_pos).
+    term_pos_expand(GPos, GList, GxPos).
 
 % Add the number of arguments needed for the hidden parameters:
 '_number_args'([], N, N).
@@ -408,19 +454,19 @@ edcg_expand_clause_wrap(Term, Expansion, TermPos0, TermPos) :-
     ;   GList = []
     ).
 
-% Create a TermPos for a goal with expanded parameters
-term_pos_expand(Pos, _, _Expand_pos), var(Pos) => true. % TODO: remove DO NOT SUBMIT
-term_pos_expand(From-To, [], Expand_pos) =>
-    Expand_pos = From-To.
-term_pos_expand(From-To, GList, Expand_pos) =>
-    Expand_pos = term_position(From,To,From,To,PosExtra),
+% Create an ExpandPos for a goal's Pos with expanded parameters
+term_pos_expand(Pos, _, _ExpandPos), var(Pos) => true. % TODO: remove DO NOT SUBMIT
+term_pos_expand(From-To, [], ExpandPos) =>
+    ExpandPos = From-To.
+term_pos_expand(From-To, GList, ExpandPos) =>
+    ExpandPos = term_position(From,To,From,To,PosExtra),
     maplist(pos_extra(To,To), GList, PosExtra).
-term_pos_expand(term_position(From,To,FFrom,FTo,ArgsPos), GList, Expand_pos) =>
-    Expand_pos = term_position(From,To,FFrom,FTo,ArgsPosExtra),
+term_pos_expand(term_position(From,To,FFrom,FTo,ArgsPos), GList, ExpandPos) =>
+    ExpandPos = term_position(From,To,FFrom,FTo,ArgsPosExtra),
     maplist(pos_extra(To,To), GList, PosExtra),
     append(ArgsPos, PosExtra, ArgsPosExtra).
-term_pos_expand(brace_term_position(From,To,ArgsPos), GList, Expand_pos) =>
-    Expand_pos = btrace_term_position(From,To,ArgsPosExtra),
+term_pos_expand(brace_term_position(From,To,ArgsPos), GList, ExpandPos) =>
+    ExpandPos = btrace_term_position(From,To,ArgsPosExtra),
     maplist(pos_extra(To,To), GList, PosExtra),
     append(ArgsPos, PosExtra, ArgsPosExtra).
 % Other things, such as `string_position` and
@@ -531,7 +577,7 @@ valid_termpos_([Hd|Tl], list_position(_From,_To, ElemsPos, TailPos)) :-
     ->  maplist(valid_termpos, [Hd|Tl], ElemsPos),
         list_tail([Hd|Tl], _, [])
     ;   list_tail([Hd|Tl], HdPart, Tail),
-        % Tail \== [], % note: can be var
+        % Tail \== [], % guaranteed by TailPos\=none
         maplist(valid_termpos, HdPart, ElemsPos),
         valid_termpos(Tail, TailPos)
     ), !.
