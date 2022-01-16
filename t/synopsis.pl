@@ -9,6 +9,11 @@ edcg:pred_info(len,0,[adder,dcg]).
 edcg:pred_info(increment,0,[adder]).
 edcg:pred_info(increment,1,[adder]).
 
+% example of applying adder accumulator twice - same as
+edcg:pred_info(qqsv,2,[adder]).
+qqsv(X,Y) -->>
+    [X,Y]:adder. % Same as [X]:adder, [Y]:adder.
+
 increment -->>
     increment(1).
 
