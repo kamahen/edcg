@@ -73,7 +73,7 @@ edcg_expand_clause((H==>>B), Expansion, ClausePos0, ClausePos) :-
 
 edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
     % TODO: the first check should always succeed, so remove it
-    (   valid_term_position(Clause, ClausePos0)  % for debugging
+    (   validate_term_position(Clause, ClausePos0)  % for debugging
     ->  true
     ;   throw(error(invalid_term_position_read(Clause,ClausePos0), _))
     ),
@@ -82,7 +82,7 @@ edcg_expand_clause_wrap(Clause, Expansion, ClausePos0, ClausePos) :-
     ;   throw(error('FAILED_expand_clause'(Clause, Expansion, ClausePos0, ClausePos), _))
     ),
     (   % ground(ClausePos),  % TODO: uncomment this
-        valid_term_position(Expansion, ClausePos) % for debugging
+        validate_term_position(Expansion, ClausePos) % for debugging
     ->  true
     ;   throw(error(invalid_term_position_expansion(Expansion, ClausePos), _))
     ).
@@ -629,6 +629,46 @@ valid_term_position_dict(Key-Value, KeyValuePosList0, KeyValuePosList1) :-
               KeyValuePosList0, KeyValuePosList1),
     valid_term_position(Key, KeyPos),
     valid_term_position(Value, ValuePos).
+
+%! validate_term_position(+Term, +TermPos) is semidet.
+% One-sided version of valid_term_position/2 that doesn't instantiate TermPos.
+% This can give a more precise indication of where Term and TermPos don't match.
+validate_term_position(_Term,   TermPos), var(TermPos) => true. % TODO: remove when term_expansion/4 fills in all location info.
+validate_term_position(Var,    _From-_To), var(Var) => true.
+validate_term_position(Atom,   _From-_To), atom(Atom) => true.
+validate_term_position(Number, _From-_To), number(Number) => true.
+validate_term_position([],     _From-_To) => true.
+validate_term_position(String,  string_position(_From,_To)), string(String) => true.
+validate_term_position({Arg},   brace_term_position(_From,_To,ArgPos)) =>
+    validate_term_position(Arg, ArgPos), !.
+validate_term_position([Hd|Tl], list_position(_From,_To, ElemsPos, none)) =>
+    list_tail([Hd|Tl], _HdPart, []),
+    maplist(validate_term_position, [Hd|Tl], ElemsPos).
+validate_term_position([Hd|Tl], list_position(_From,_To, ElemsPos, TailPos)) =>
+    list_tail([Hd|Tl], HdPart, Tail),
+    maplist(validate_term_position, HdPart, ElemsPos),
+    validate_term_position(Tail, TailPos).
+validate_term_position(Term, term_position(_From,_To, FFrom,FTo,SubPos)) =>
+    compound_name_arguments(Term, Name, Arguments),
+    validate_term_position(Name, FFrom-FTo),
+    maplist(validate_term_position, Arguments, SubPos).
+validate_term_position(Dict, dict_position(_From,_To,TagFrom,TagTo,KeyValuePosList)) =>
+    dict_pairs(Dict, Tag, Pairs),
+    validate_term_position(Tag, TagFrom-TagTo),
+    foldl(validate_term_position_dict, Pairs, KeyValuePosList, []).
+% key_value_position(From, To, SepFrom, SepTo, Key, KeyPos, ValuePos)
+% is handled in validate_term_position_dict.
+validate_term_position(Term, parentheses_term_position(_From,_To,ContentPos)) =>
+    validate_term_position(Term, ContentPos).
+validate_term_position(_Term, quasi_quotation_position(_From,_To,SyntaxTerm,SyntaxPos,_ContentPos)) =>
+    validate_term_position(SyntaxTerm, SyntaxPos).
+
+:- det(validate_term_position_dict/3).
+validate_term_position_dict(Key-Value, KeyValuePosList0, KeyValuePosList1) :-
+    selectchk(key_value_position(_From,_To,_SepFrom,_SepTo,Key,KeyPos,ValuePos),
+              KeyValuePosList0, KeyValuePosList1),
+    validate_term_position(Key, KeyPos),
+    validate_term_position(Value, ValuePos).
 
 :- det(list_tail/3).
 list_tail([X|Xs], HdPart, Tail) =>
