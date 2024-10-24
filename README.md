@@ -143,6 +143,7 @@ and the [DCG Primer](https://www.metalevel.at/prolog/dcg).
 O'Keefe](https://swi-prolog.iai.uni-bonn.narkive.com/cOnL0aGn/push-back-lists-on-dcg-rule-heads)
 discusses cuts in DCGs and why the original implementation used a
 `C/3` predicate for unifications. In essence, if you move a unification over a cut,
+you end up with a non-steadfast predicate.
 
 EDCGs short-cut this, so if you use cuts, you might not get a correct
 translation. Here's an example:
